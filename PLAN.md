@@ -11,7 +11,8 @@ Nenhum item está concluído por existir no template. Checkboxes só são marcad
 - [x] Zustand
 - [x] React Hook Form
 - [x] Zod
-- [ ] Tailwind CSS, Radix UI e Lucide React
+- [x] Tailwind CSS
+- [ ] Radix UI e Lucide React
 - [ ] Biblioteca de gráficos e `date-fns`
 - [ ] Firebase SDK e camada de repositories/services
 - [ ] Estrutura por features, providers, layouts e guards

@@ -1,4 +1,18 @@
-:root {
+@import 'tailwindcss';
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
   font-family:
     Inter,
     ui-sans-serif,
@@ -7,70 +21,16 @@
     BlinkMacSystemFont,
     'Segoe UI',
     sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
   color-scheme: light dark;
-  color: #202124;
-  background: #f7f7f8;
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  color: light-dark(#171717, #f5f5f5);
+  background: light-dark(#ffffff, #171717);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    color: #f3f4f6;
-    background: #17181c;
-  }
-}
-
-* {
-  box-sizing: border-box;
-}
-
-body {
-  margin: 0;
-  min-width: 320px;
+#root {
   min-height: 100vh;
 }
 
-button,
-input,
-textarea,
-select {
-  font: inherit;
-}
-
-a {
-  color: inherit;
-}
-
-.app-layout {
-  min-height: 100vh;
-}
-
-.app-main {
-  width: min(100% - 2rem, 72rem);
-  margin-inline: auto;
-  padding-block: 4rem;
-}
-
-.foundation-page {
-  max-width: 48rem;
-}
-
-.foundation-page h1 {
-  margin-block: 0 1rem;
-  font-size: clamp(2rem, 6vw, 3.5rem);
-  line-height: 1.1;
-}
-
-.foundation-page ul {
-  padding-left: 1.25rem;
-}
-
-.text-link {
-  text-decoration-thickness: 0.1em;
-  text-underline-offset: 0.2em;
+:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
 }
