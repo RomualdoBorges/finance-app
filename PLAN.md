@@ -20,7 +20,7 @@ Nenhum item está concluído por existir no template. Checkboxes só são marcad
 - [x] Vitest, Testing Library, Playwright e mocks de repositories
 - [x] Emulator Suite para Auth, Firestore, Functions, Storage e Hosting
 - [x] Variáveis públicas validadas e secrets fora do frontend
-- [ ] Shell responsivo, tema claro/escuro e estados de interface
+- [x] Shell responsivo, tema claro/escuro e estados de interface
 - [ ] CI com typecheck, lint, testes e build
 
 ## Fase 1 — MVP individual
