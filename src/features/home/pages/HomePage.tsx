@@ -1,5 +1,7 @@
 import { CircleDollarSign } from 'lucide-react'
 
+import { ThemeSelector } from '../../../components/shared/ThemeSelector'
+
 const installedLibraries = [
   'React Router',
   'TanStack Query',
@@ -20,6 +22,8 @@ export function HomePage() {
         A estrutura inicial está pronta para receber as próximas etapas do
         produto.
       </p>
+
+      <ThemeSelector />
 
       <h2>Bibliotecas principais</h2>
       <ul>
