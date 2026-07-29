@@ -73,6 +73,17 @@ describe('parseFirebaseEnvironment', () => {
     }
   })
 
+  it('aceita variáveis auxiliares conhecidas do Emulator Suite', () => {
+    const result = parseFirebaseEnvironment({
+      ...baseEnvironment,
+      VITE_FIREBASE_AUTH_EMULATOR_URL: 'http://127.0.0.1:9099',
+      VITE_FIRESTORE_EMULATOR_HOST: '127.0.0.1:8080',
+    })
+
+    expect(result.VITE_FIREBASE_AUTH_EMULATOR_URL).toBe('http://127.0.0.1:9099')
+    expect(result.VITE_FIRESTORE_EMULATOR_HOST).toBe('127.0.0.1:8080')
+  })
+
   it('rejeita variável obrigatória ausente com mensagem clara', () => {
     const incompleteEnvironment: Record<string, string> = {
       ...baseEnvironment,

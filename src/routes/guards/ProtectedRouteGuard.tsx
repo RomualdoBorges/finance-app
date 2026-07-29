@@ -1,24 +1,27 @@
 import { Navigate, Outlet } from 'react-router-dom'
 
-import type { RoutePath } from '../paths'
+import { useLocation } from 'react-router-dom'
+
+import { useAuth } from '../../features/auth/hooks/useAuth'
+import { routePaths } from '../paths'
 import { RouteGuardFallback } from './RouteGuardFallback'
-import type { SessionStatus } from './session'
 
-type ProtectedRouteGuardProps = {
-  readonly sessionStatus: SessionStatus
-  readonly publicRoute: RoutePath
-}
+export function ProtectedRouteGuard() {
+  const { status } = useAuth()
+  const location = useLocation()
 
-export function ProtectedRouteGuard({
-  sessionStatus,
-  publicRoute,
-}: ProtectedRouteGuardProps) {
-  if (sessionStatus === 'unknown') {
+  if (status === 'loading') {
     return <RouteGuardFallback />
   }
 
-  if (sessionStatus === 'unauthenticated') {
-    return <Navigate replace to={publicRoute} />
+  if (status === 'unauthenticated') {
+    return (
+      <Navigate
+        replace
+        state={{ from: location.pathname }}
+        to={routePaths.login}
+      />
+    )
   }
 
   return <Outlet />

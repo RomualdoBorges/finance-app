@@ -7,6 +7,24 @@ const hostnameSchema = nonEmptyStringSchema.regex(
   /^(?:localhost|(?=.{1,253}$)(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)*[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)$/,
   'deve ser um hostname sem protocolo, porta ou caminho',
 )
+const hostAndPortSchema = nonEmptyStringSchema.regex(
+  /^(?:localhost|[a-zA-Z0-9.-]+):\d{1,5}$/,
+  'deve conter hostname e porta, sem protocolo ou caminho',
+)
+const emulatorUrlSchema = z
+  .string()
+  .url('deve ser uma URL válida')
+  .refine((value) => {
+    const url = new URL(value)
+    return (
+      url.protocol === 'http:' &&
+      url.username === '' &&
+      url.password === '' &&
+      url.pathname === '/' &&
+      url.search === '' &&
+      url.hash === ''
+    )
+  }, 'deve ser uma URL HTTP sem credenciais, caminho, query ou fragmento')
 
 const portSchema = z
   .string()
@@ -45,6 +63,8 @@ const firebaseEnvSchema = z
       .transform((value) => value === 'true'),
     VITE_FIREBASE_AUTH_EMULATOR_HOST: hostnameSchema.optional(),
     VITE_FIREBASE_AUTH_EMULATOR_PORT: portSchema.optional(),
+    VITE_FIREBASE_AUTH_EMULATOR_URL: emulatorUrlSchema.optional(),
+    VITE_FIRESTORE_EMULATOR_HOST: hostAndPortSchema.optional(),
     VITE_FIREBASE_FIRESTORE_EMULATOR_HOST: hostnameSchema.optional(),
     VITE_FIREBASE_FIRESTORE_EMULATOR_PORT: portSchema.optional(),
     VITE_FIREBASE_STORAGE_EMULATOR_HOST: hostnameSchema.optional(),

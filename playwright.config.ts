@@ -16,7 +16,7 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: `pnpm build && pnpm preview --host 127.0.0.1 --port ${port}`,
+    command: `pnpm typecheck && pnpm exec vite build --mode e2e && pnpm preview --host 127.0.0.1 --port ${port}`,
     url: `http://127.0.0.1:${port}`,
     reuseExistingServer: !process.env['CI'],
     timeout: 120_000,

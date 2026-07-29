@@ -27,7 +27,7 @@ Nenhum item está concluído por existir no template. Checkboxes só são marcad
 
 ### Milestone 1 — Autenticação e onboarding
 
-- [ ] Cadastro/login por e-mail e senha
+- [x] Cadastro/login por e-mail e senha
 - [ ] Login com Google
 - [ ] Logout, recuperação, verificação e atualização de senha
 - [ ] Exclusão de usuário e preparação para MFA

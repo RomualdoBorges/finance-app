@@ -1,28 +1,20 @@
 import { expect, test } from '@playwright/test'
 
-test('carrega a página inicial', async ({ page }) => {
+test('redireciona acesso não autenticado para o login', async ({ page }) => {
   await page.goto('/')
 
-  await expect(page.getByRole('banner')).toContainText('Financeiro')
   await expect(
     page.getByRole('heading', {
       level: 1,
-      name: 'Fundação da aplicação configurada',
+      name: 'Entre na sua conta',
     }),
   ).toBeVisible()
+  await expect(page).toHaveURL(/\/login$/)
 })
 
-test('permite navegar e selecionar o tema em tela pequena', async ({
-  page,
-}) => {
+test('permite selecionar o tema em tela pequena', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 720 })
-  await page.goto('/')
-
-  await page.getByRole('button', { name: 'Abrir navegação' }).click()
-  await expect(
-    page.getByRole('dialog', { name: 'Financeiro' }),
-  ).toBeVisible()
-  await page.getByRole('button', { name: 'Fechar navegação' }).click()
+  await page.goto('/login')
 
   await page.getByRole('button', { name: /Selecionar tema/ }).click()
   await page.getByRole('menuitemradio', { name: 'Escuro' }).click()

@@ -1,24 +1,18 @@
 import { Navigate, Outlet } from 'react-router-dom'
 
-import type { RoutePath } from '../paths'
+import { useAuth } from '../../features/auth/hooks/useAuth'
+import { routePaths } from '../paths'
 import { RouteGuardFallback } from './RouteGuardFallback'
-import type { SessionStatus } from './session'
 
-type PublicOnlyGuardProps = {
-  readonly sessionStatus: SessionStatus
-  readonly protectedRoute: RoutePath
-}
+export function PublicOnlyGuard() {
+  const { status } = useAuth()
 
-export function PublicOnlyGuard({
-  sessionStatus,
-  protectedRoute,
-}: PublicOnlyGuardProps) {
-  if (sessionStatus === 'unknown') {
+  if (status === 'loading') {
     return <RouteGuardFallback />
   }
 
-  if (sessionStatus === 'authenticated') {
-    return <Navigate replace to={protectedRoute} />
+  if (status === 'authenticated') {
+    return <Navigate replace to={routePaths.home} />
   }
 
   return <Outlet />
