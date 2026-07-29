@@ -17,7 +17,7 @@ Nenhum item está concluído por existir no template. Checkboxes só são marcad
 - [x] Biblioteca de gráficos e `date-fns`
 - [x] Firebase SDK e camada de repositories/services
 - [x] Estrutura por features, providers, layouts e guards
-- [ ] Vitest, Testing Library, Playwright e mocks de repositories
+- [x] Vitest, Testing Library, Playwright e mocks de repositories
 - [ ] Projetos Firebase separados para dev, staging e produção
 - [ ] Emulator Suite para Auth, Firestore, Functions, Storage e Hosting
 - [ ] Variáveis públicas validadas e secrets fora do frontend
