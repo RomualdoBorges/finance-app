@@ -8,9 +8,12 @@ interface ImportMetaEnv {
   readonly VITE_FIREBASE_MESSAGING_SENDER_ID: string
   readonly VITE_FIREBASE_APP_ID: string
   readonly VITE_FIREBASE_USE_EMULATORS?: 'true' | 'false'
-  readonly VITE_FIREBASE_AUTH_EMULATOR_URL?: string
-  readonly VITE_FIRESTORE_EMULATOR_URL?: string
-  readonly VITE_FIREBASE_STORAGE_EMULATOR_URL?: string
+  readonly VITE_FIREBASE_AUTH_EMULATOR_HOST?: string
+  readonly VITE_FIREBASE_AUTH_EMULATOR_PORT?: string
+  readonly VITE_FIREBASE_FIRESTORE_EMULATOR_HOST?: string
+  readonly VITE_FIREBASE_FIRESTORE_EMULATOR_PORT?: string
+  readonly VITE_FIREBASE_STORAGE_EMULATOR_HOST?: string
+  readonly VITE_FIREBASE_STORAGE_EMULATOR_PORT?: string
 }
 
 interface ImportMeta {

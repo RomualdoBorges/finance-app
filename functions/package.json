@@ -1,0 +1,21 @@
+{
+  "name": "finance-app-functions",
+  "private": true,
+  "version": "0.0.0",
+  "main": "lib/index.js",
+  "type": "module",
+  "engines": {
+    "node": "22"
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "firebase-admin": "^14.2.0",
+    "firebase-functions": "^7.3.0"
+  },
+  "devDependencies": {
+    "typescript": "~6.0.2"
+  }
+}

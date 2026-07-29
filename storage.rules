@@ -1,0 +1,10 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Milestone 0: deny by default. Domain-specific rules will be added later.
+    match /{path=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -5,9 +5,12 @@ import { connectStorageEmulator, type FirebaseStorage } from 'firebase/storage'
 
 interface EmulatorConfiguration {
   readonly enabled: boolean
-  readonly authUrl: string | undefined
-  readonly firestoreUrl: string | undefined
-  readonly storageUrl: string | undefined
+  readonly authHost: string | undefined
+  readonly authPort: number | undefined
+  readonly firestoreHost: string | undefined
+  readonly firestorePort: number | undefined
+  readonly storageHost: string | undefined
+  readonly storagePort: number | undefined
 }
 
 interface FirebaseEmulatorClients {
@@ -22,26 +25,13 @@ interface FirebaseEmulatorGlobalState {
   __financeAppConnectedFirebaseEmulators?: WeakSet<FirebaseApp>
 }
 
-const firebaseEmulatorGlobalState = globalThis as typeof globalThis &
+const globalState = globalThis as typeof globalThis &
   FirebaseEmulatorGlobalState
-
 const connectedApps =
-  firebaseEmulatorGlobalState.__financeAppConnectedFirebaseEmulators ??
+  globalState.__financeAppConnectedFirebaseEmulators ??
   new WeakSet<FirebaseApp>()
 
-firebaseEmulatorGlobalState.__financeAppConnectedFirebaseEmulators =
-  connectedApps
-
-function getHostAndPort(url: string) {
-  const parsedUrl = new URL(url)
-  const port = Number(parsedUrl.port)
-
-  if (!Number.isInteger(port) || port <= 0) {
-    throw new Error(`URL de emulador sem porta válida: ${parsedUrl.origin}`)
-  }
-
-  return { host: parsedUrl.hostname, port }
-}
+globalState.__financeAppConnectedFirebaseEmulators = connectedApps
 
 export function connectFirebaseEmulators({
   app,
@@ -50,29 +40,34 @@ export function connectFirebaseEmulators({
   storage,
   configuration,
 }: FirebaseEmulatorClients): void {
-  if (!configuration.enabled || connectedApps.has(app)) {
-    return
-  }
+  if (!configuration.enabled || connectedApps.has(app)) return
+
+  const {
+    authHost,
+    authPort,
+    firestoreHost,
+    firestorePort,
+    storageHost,
+    storagePort,
+  } = configuration
 
   if (
-    !configuration.authUrl ||
-    !configuration.firestoreUrl ||
-    !configuration.storageUrl
+    authHost === undefined ||
+    authPort === undefined ||
+    firestoreHost === undefined ||
+    firestorePort === undefined ||
+    storageHost === undefined ||
+    storagePort === undefined
   ) {
-    throw new Error('URLs dos emuladores Firebase não foram configuradas')
+    throw new Error(
+      'Hosts e portas dos emuladores Firebase não foram configurados',
+    )
   }
 
-  const firestoreAddress = getHostAndPort(configuration.firestoreUrl)
-  const storageAddress = getHostAndPort(configuration.storageUrl)
-
-  connectAuthEmulator(auth, configuration.authUrl, {
+  connectAuthEmulator(auth, `http://${authHost}:${authPort}`, {
     disableWarnings: true,
   })
-  connectFirestoreEmulator(
-    firestore,
-    firestoreAddress.host,
-    firestoreAddress.port,
-  )
-  connectStorageEmulator(storage, storageAddress.host, storageAddress.port)
+  connectFirestoreEmulator(firestore, firestoreHost, firestorePort)
+  connectStorageEmulator(storage, storageHost, storagePort)
   connectedApps.add(app)
 }
