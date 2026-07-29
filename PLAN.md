@@ -21,7 +21,7 @@ Nenhum item está concluído por existir no template. Checkboxes só são marcad
 - [x] Emulator Suite para Auth, Firestore, Functions, Storage e Hosting
 - [x] Variáveis públicas validadas e secrets fora do frontend
 - [x] Shell responsivo, tema claro/escuro e estados de interface
-- [ ] CI com typecheck, lint, testes e build
+- [x] CI com typecheck, lint, testes e build
 
 ## Fase 1 — MVP individual
 
