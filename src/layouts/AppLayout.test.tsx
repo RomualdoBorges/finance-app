@@ -24,6 +24,7 @@ function renderLayout() {
         signInWithEmailAndPassword: () =>
           Promise.reject(new Error('não utilizado')),
         signOut: () => Promise.resolve(),
+        sendPasswordResetEmail: () => Promise.resolve(),
       }}
     >
       <Routes>

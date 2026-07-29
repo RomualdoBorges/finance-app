@@ -23,6 +23,27 @@ test('valida os campos básicos sem acessar o Firebase', async ({ page }) => {
   await expect(page.getByLabel('E-mail')).toBeFocused()
 })
 
+test('solicita recuperação de senha sem revelar a existência da conta', async ({
+  page,
+}) => {
+  await page.goto('/login')
+  await page.getByRole('link', { name: 'Esqueci minha senha' }).click()
+
+  await expect(
+    page.getByRole('heading', { level: 1, name: 'Recuperar senha' }),
+  ).toBeVisible()
+  await page.getByLabel('E-mail').fill('pessoa@example.com')
+  await page.getByRole('button', { name: 'Enviar instruções' }).click()
+
+  await expect(page.getByRole('status')).toContainText(
+    'Se existir uma conta para este e-mail',
+  )
+  await expect(
+    page.getByRole('link', { name: 'Voltar ao login' }),
+  ).toBeVisible()
+  await expect(page).toHaveURL(/\/recuperar-senha$/)
+})
+
 test('encerra a sessão e remove o conteúdo protegido', async ({ page }) => {
   await page.goto('/?e2e-authenticated')
 

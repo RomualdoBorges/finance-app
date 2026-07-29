@@ -18,6 +18,10 @@ export class E2EAuthRepository implements AuthRepository {
     return Promise.resolve()
   }
 
+  sendPasswordResetEmail(): Promise<void> {
+    return Promise.resolve()
+  }
+
   subscribeToAuthState(
     listener: (user: AuthenticatedUser | null) => void,
   ): () => void {

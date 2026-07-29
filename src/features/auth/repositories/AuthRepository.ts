@@ -13,6 +13,8 @@ export interface AuthRepository {
 
   signOut(): Promise<void>
 
+  sendPasswordResetEmail(email: string): Promise<void>
+
   subscribeToAuthState(
     listener: (user: AuthenticatedUser | null) => void,
   ): () => void

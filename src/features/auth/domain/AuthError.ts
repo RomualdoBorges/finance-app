@@ -7,6 +7,7 @@ export type AuthErrorCode =
   | 'too-many-requests'
   | 'network-unavailable'
   | 'sign-out-failed'
+  | 'password-reset-failed'
   | 'unknown'
 
 const authErrorMessages: Record<AuthErrorCode, string> = {
@@ -16,10 +17,12 @@ const authErrorMessages: Record<AuthErrorCode, string> = {
   'invalid-credentials': 'E-mail ou senha inválidos.',
   'user-disabled': 'Esta conta está desabilitada.',
   'too-many-requests':
-    'Muitas tentativas foram realizadas. Aguarde e tente novamente.',
+    'Muitas tentativas foram realizadas. Aguarde alguns minutos e tente novamente.',
   'network-unavailable':
-    'Não foi possível conectar. Verifique sua internet e tente novamente.',
+    'Não foi possível concluir a solicitação. Verifique sua conexão e tente novamente.',
   'sign-out-failed': 'Não foi possível sair da conta. Tente novamente.',
+  'password-reset-failed':
+    'Não foi possível solicitar a recuperação de senha. Tente novamente.',
   unknown: 'Não foi possível concluir a autenticação. Tente novamente.',
 }
 

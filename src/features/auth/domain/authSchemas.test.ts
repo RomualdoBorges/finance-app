@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest'
 
-import { loginSchema, registerSchema } from './authSchemas'
+import {
+  loginSchema,
+  passwordResetSchema,
+  registerSchema,
+} from './authSchemas'
 
 describe('schemas de autenticação', () => {
   it('aceita um login válido', () => {
@@ -24,6 +28,19 @@ describe('schemas de autenticação', () => {
         .success,
     ).toBe(false)
   })
+
+  it('normaliza e aceita o e-mail da recuperação', () => {
+    expect(
+      passwordResetSchema.parse({ email: '  pessoa@example.com  ' }),
+    ).toEqual({ email: 'pessoa@example.com' })
+  })
+
+  it.each(['', 'invalido'])(
+    'rejeita e-mail inválido na recuperação: %s',
+    (email) => {
+      expect(passwordResetSchema.safeParse({ email }).success).toBe(false)
+    },
+  )
 
   it('aceita um cadastro válido', () => {
     expect(

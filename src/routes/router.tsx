@@ -3,6 +3,7 @@ import { createBrowserRouter } from 'react-router-dom'
 import { HomePage } from '../features/home/pages/HomePage'
 import { LoginPage } from '../features/auth/pages/LoginPage'
 import { RegisterPage } from '../features/auth/pages/RegisterPage'
+import { PasswordResetPage } from '../features/auth/pages/PasswordResetPage'
 import { NotFoundPage } from '../features/not-found/pages/NotFoundPage'
 import { AppLayout } from '../layouts/AppLayout'
 import { AuthLayout } from '../layouts/AuthLayout'
@@ -19,6 +20,7 @@ export const router = createBrowserRouter([
         children: [
           { path: routePaths.login, element: <LoginPage /> },
           { path: routePaths.register, element: <RegisterPage /> },
+          { path: routePaths.passwordReset, element: <PasswordResetPage /> },
         ],
       },
     ],

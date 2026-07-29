@@ -33,7 +33,7 @@ Nenhum item está concluído por existir no template. Checkboxes só são marcad
 
 - [ ] Autenticação complementar
   - [x] Logout
-  - [ ] Recuperação de senha
+  - [x] Recuperação de senha
   - [ ] Verificação de e-mail
   - [ ] Atualização de senha
 - [ ] Exclusão de usuário e preparação para MFA

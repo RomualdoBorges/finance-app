@@ -13,6 +13,7 @@ import { createAuthRepositoryMock } from '../../../test/mocks/repositories/authR
 import { renderWithProviders } from '../../../test/render'
 import { LoginPage } from './LoginPage'
 import { RegisterPage } from './RegisterPage'
+import { PasswordResetPage } from './PasswordResetPage'
 
 const authenticatedUser: AuthenticatedUser = {
   uid: 'user-1',
@@ -43,6 +44,10 @@ function renderAuthPages(
           <Route element={<PublicOnlyGuard />}>
             <Route path={routePaths.login} element={<LoginPage />} />
             <Route path={routePaths.register} element={<RegisterPage />} />
+            <Route
+              path={routePaths.passwordReset}
+              element={<PasswordResetPage />}
+            />
           </Route>
           <Route
             path={routePaths.home}
@@ -87,6 +92,72 @@ describe('páginas de autenticação', () => {
     expect(
       screen.getByRole('heading', { name: 'Entre na sua conta' }),
     ).toBeInTheDocument()
+  })
+
+  it('navega do login para a recuperação e volta', async () => {
+    const user = userEvent.setup()
+    renderAuthPages()
+
+    await user.click(screen.getByRole('link', { name: 'Esqueci minha senha' }))
+    expect(
+      screen.getByRole('heading', { name: 'Recuperar senha' }),
+    ).toBeInTheDocument()
+
+    await user.click(screen.getByRole('link', { name: 'Voltar ao login' }))
+    expect(
+      screen.getByRole('heading', { name: 'Entre na sua conta' }),
+    ).toBeInTheDocument()
+  })
+
+  it('valida e foca o e-mail da recuperação', async () => {
+    const user = userEvent.setup()
+    renderAuthPages(routePaths.passwordReset)
+
+    await user.click(screen.getByRole('button', { name: 'Enviar instruções' }))
+
+    expect(screen.getByText('Informe seu e-mail.')).toBeInTheDocument()
+    expect(screen.getByLabelText('E-mail')).toHaveFocus()
+  })
+
+  it('exibe confirmação neutra e impede reenvio acidental', async () => {
+    const user = userEvent.setup()
+    const page = renderAuthPages(routePaths.passwordReset, (repository) => {
+      repository.sendPasswordResetEmail.mockResolvedValue(undefined)
+    })
+
+    await user.type(screen.getByLabelText('E-mail'), 'pessoa@example.com')
+    await user.click(screen.getByRole('button', { name: 'Enviar instruções' }))
+
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      'Se existir uma conta para este e-mail',
+    )
+    expect(
+      page.repository.sendPasswordResetEmail.mock.calls,
+    ).toHaveLength(1)
+    expect(
+      screen.queryByRole('button', { name: 'Enviar instruções' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('preserva o e-mail e permite tentar novamente após falha segura', async () => {
+    const user = userEvent.setup()
+    renderAuthPages(routePaths.passwordReset, (repository) => {
+      repository.sendPasswordResetEmail.mockRejectedValue(
+        new AuthError('network-unavailable'),
+      )
+    })
+
+    const email = screen.getByLabelText('E-mail')
+    await user.type(email, 'pessoa@example.com')
+    await user.click(screen.getByRole('button', { name: 'Enviar instruções' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Verifique sua conexão',
+    )
+    expect(email).toHaveValue('pessoa@example.com')
+    expect(
+      screen.getByRole('button', { name: 'Enviar instruções' }),
+    ).toBeEnabled()
   })
 
   it('exibe erros e foca o primeiro campo inválido', async () => {

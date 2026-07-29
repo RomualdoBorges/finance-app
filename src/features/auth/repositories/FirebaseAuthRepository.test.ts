@@ -24,6 +24,7 @@ function createRepository() {
     createUser: vi.fn().mockResolvedValue(credential),
     signIn: vi.fn().mockResolvedValue(credential),
     signOut: vi.fn().mockResolvedValue(undefined),
+    sendPasswordResetEmail: vi.fn().mockResolvedValue(undefined),
     subscribe: vi.fn().mockReturnValue(unsubscribe),
   }
 
@@ -111,6 +112,46 @@ describe('FirebaseAuthRepository', () => {
     await expect(repository.signOut()).resolves.toBeUndefined()
     expect(operations.signOut).toHaveBeenCalledOnce()
     expect(operations.signOut).toHaveBeenCalledWith(expect.anything())
+  })
+
+  it('solicita a recuperação usando a instância Auth configurada', async () => {
+    const { repository, operations } = createRepository()
+
+    await expect(
+      repository.sendPasswordResetEmail('pessoa@example.com'),
+    ).resolves.toBeUndefined()
+    expect(operations.sendPasswordResetEmail).toHaveBeenCalledWith(
+      expect.anything(),
+      'pessoa@example.com',
+    )
+  })
+
+  it('não revela quando o usuário não existe', async () => {
+    const { repository, operations } = createRepository()
+    operations.sendPasswordResetEmail.mockRejectedValueOnce({
+      code: 'auth/user-not-found',
+    })
+
+    await expect(
+      repository.sendPasswordResetEmail('ausente@example.com'),
+    ).resolves.toBeUndefined()
+  })
+
+  it.each([
+    ['auth/invalid-email', 'invalid-email'],
+    ['auth/too-many-requests', 'too-many-requests'],
+    ['auth/network-request-failed', 'network-unavailable'],
+    ['auth/internal-error', 'password-reset-failed'],
+  ])('sanitiza a falha de recuperação %s', async (firebaseCode, domainCode) => {
+    const { repository, operations } = createRepository()
+    operations.sendPasswordResetEmail.mockRejectedValueOnce({
+      code: firebaseCode,
+      message: 'detalhes internos',
+    })
+
+    await expect(
+      repository.sendPasswordResetEmail('pessoa@example.com'),
+    ).rejects.toMatchObject({ code: domainCode })
   })
 
   it('sanitiza falhas ao encerrar a sessão', async () => {

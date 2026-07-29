@@ -16,6 +16,7 @@ export type AuthContextValue = {
     password: string,
   ) => Promise<AuthenticatedUser>
   readonly signOut: () => Promise<void>
+  readonly sendPasswordResetEmail: (email: string) => Promise<void>
 }
 
 export const AuthContext = createContext<AuthContextValue | null>(null)

@@ -40,3 +40,12 @@ export function useSignOut() {
     retry: false,
   })
 }
+
+export function useSendPasswordResetEmail() {
+  const { sendPasswordResetEmail } = useAuth()
+
+  return useMutation({
+    mutationFn: sendPasswordResetEmail,
+    retry: false,
+  })
+}

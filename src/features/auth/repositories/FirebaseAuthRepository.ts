@@ -1,6 +1,7 @@
 import {
   createUserWithEmailAndPassword,
   onAuthStateChanged,
+  sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signOut,
   type Auth,
@@ -24,6 +25,7 @@ type FirebaseAuthOperations = {
     password: string,
   ) => Promise<UserCredential>
   readonly signOut: (auth: Auth) => Promise<void>
+  readonly sendPasswordResetEmail: (auth: Auth, email: string) => Promise<void>
   readonly subscribe: (
     auth: Auth,
     listener: (user: User | null) => void,
@@ -34,6 +36,7 @@ const defaultOperations: FirebaseAuthOperations = {
   createUser: createUserWithEmailAndPassword,
   signIn: signInWithEmailAndPassword,
   signOut,
+  sendPasswordResetEmail,
   subscribe: onAuthStateChanged,
 }
 
@@ -127,6 +130,24 @@ export class FirebaseAuthRepository implements AuthRepository {
       await this.operations.signOut(this.auth)
     } catch {
       throw new AuthError('sign-out-failed')
+    }
+  }
+
+  async sendPasswordResetEmail(email: string): Promise<void> {
+    try {
+      await this.operations.sendPasswordResetEmail(this.auth, email)
+    } catch (error) {
+      const mappedError = mapFirebaseAuthError(error)
+
+      if (mappedError.code === 'invalid-credentials') {
+        return
+      }
+
+      if (mappedError.code === 'unknown') {
+        throw new AuthError('password-reset-failed')
+      }
+
+      throw mappedError
     }
   }
 

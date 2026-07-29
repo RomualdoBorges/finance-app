@@ -11,6 +11,10 @@ export const loginSchema = z.object({
   password: z.string().min(1, 'Informe sua senha.'),
 })
 
+export const passwordResetSchema = z.object({
+  email: requiredEmailSchema,
+})
+
 export const registerSchema = z
   .object({
     email: requiredEmailSchema,
@@ -26,4 +30,5 @@ export const registerSchema = z
   })
 
 export type LoginFormValues = z.infer<typeof loginSchema>
+export type PasswordResetFormValues = z.infer<typeof passwordResetSchema>
 export type RegisterFormValues = z.infer<typeof registerSchema>

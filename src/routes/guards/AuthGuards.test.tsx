@@ -23,6 +23,7 @@ function contextValue(status: AuthContextValue['status']): AuthContextValue {
     registerWithEmailAndPassword: vi.fn(),
     signInWithEmailAndPassword: vi.fn(),
     signOut: vi.fn(),
+    sendPasswordResetEmail: vi.fn(),
   }
 }
 

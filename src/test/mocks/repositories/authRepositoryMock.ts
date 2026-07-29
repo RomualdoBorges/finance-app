@@ -9,6 +9,8 @@ export function createAuthRepositoryMock(): Mocked<AuthRepository> {
     signInWithEmailAndPassword:
       vi.fn<AuthRepository['signInWithEmailAndPassword']>(),
     signOut: vi.fn<AuthRepository['signOut']>(),
+    sendPasswordResetEmail:
+      vi.fn<AuthRepository['sendPasswordResetEmail']>(),
     subscribeToAuthState: vi.fn<AuthRepository['subscribeToAuthState']>(),
   }
 }
