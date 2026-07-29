@@ -3,6 +3,7 @@ import { Outlet } from 'react-router-dom'
 import { AppSidebar } from '../components/navigation/AppSidebar'
 import { MobileNavigation } from '../components/navigation/MobileNavigation'
 import { ThemeSelector } from '../components/shared/ThemeSelector'
+import { SignOutButton } from '../features/auth/components/SignOutButton'
 
 export function AppLayout() {
   return (
@@ -25,9 +26,7 @@ export function AppLayout() {
             role="group"
           >
             <ThemeSelector />
-            <span className="hidden rounded-md border border-border px-3 py-2 text-sm font-medium sm:inline">
-              Conta
-            </span>
+            <SignOutButton />
           </div>
         </div>
       </header>

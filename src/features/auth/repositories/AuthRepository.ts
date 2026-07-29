@@ -11,6 +11,8 @@ export interface AuthRepository {
     password: string,
   ): Promise<AuthenticatedUser>
 
+  signOut(): Promise<void>
+
   subscribeToAuthState(
     listener: (user: AuthenticatedUser | null) => void,
   ): () => void

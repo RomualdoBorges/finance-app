@@ -6,6 +6,7 @@ export type AuthErrorCode =
   | 'user-disabled'
   | 'too-many-requests'
   | 'network-unavailable'
+  | 'sign-out-failed'
   | 'unknown'
 
 const authErrorMessages: Record<AuthErrorCode, string> = {
@@ -18,6 +19,7 @@ const authErrorMessages: Record<AuthErrorCode, string> = {
     'Muitas tentativas foram realizadas. Aguarde e tente novamente.',
   'network-unavailable':
     'Não foi possível conectar. Verifique sua internet e tente novamente.',
+  'sign-out-failed': 'Não foi possível sair da conta. Tente novamente.',
   unknown: 'Não foi possível concluir a autenticação. Tente novamente.',
 }
 

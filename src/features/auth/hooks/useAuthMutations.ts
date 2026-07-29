@@ -31,3 +31,12 @@ export function useSignInWithEmailAndPassword() {
     retry: false,
   })
 }
+
+export function useSignOut() {
+  const { signOut } = useAuth()
+
+  return useMutation({
+    mutationFn: signOut,
+    retry: false,
+  })
+}

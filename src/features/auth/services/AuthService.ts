@@ -22,6 +22,10 @@ export class AuthService {
     return this.repository.signInWithEmailAndPassword(email, password)
   }
 
+  signOut(): Promise<void> {
+    return this.repository.signOut()
+  }
+
   subscribeToAuthState(
     listener: (user: AuthenticatedUser | null) => void,
   ): () => void {

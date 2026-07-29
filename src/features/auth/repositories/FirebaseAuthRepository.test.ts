@@ -23,6 +23,7 @@ function createRepository() {
   const operations = {
     createUser: vi.fn().mockResolvedValue(credential),
     signIn: vi.fn().mockResolvedValue(credential),
+    signOut: vi.fn().mockResolvedValue(undefined),
     subscribe: vi.fn().mockReturnValue(unsubscribe),
   }
 
@@ -102,5 +103,26 @@ describe('FirebaseAuthRepository', () => {
     const returnedUnsubscribe = repository.subscribeToAuthState(vi.fn())
 
     expect(returnedUnsubscribe).toBe(unsubscribe)
+  })
+
+  it('encerra a sessão usando a instância Auth configurada', async () => {
+    const { repository, operations } = createRepository()
+
+    await expect(repository.signOut()).resolves.toBeUndefined()
+    expect(operations.signOut).toHaveBeenCalledOnce()
+    expect(operations.signOut).toHaveBeenCalledWith(expect.anything())
+  })
+
+  it('sanitiza falhas ao encerrar a sessão', async () => {
+    const { repository, operations } = createRepository()
+    operations.signOut.mockRejectedValueOnce({
+      code: 'auth/internal-error',
+      message: 'token secreto',
+    })
+
+    await expect(repository.signOut()).rejects.toMatchObject({
+      code: 'sign-out-failed',
+      message: 'Não foi possível sair da conta. Tente novamente.',
+    })
   })
 })

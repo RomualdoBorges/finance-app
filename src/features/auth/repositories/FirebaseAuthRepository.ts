@@ -1,7 +1,8 @@
 import {
   createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
   onAuthStateChanged,
+  signInWithEmailAndPassword,
+  signOut,
   type Auth,
   type User,
   type UserCredential,
@@ -22,6 +23,7 @@ type FirebaseAuthOperations = {
     email: string,
     password: string,
   ) => Promise<UserCredential>
+  readonly signOut: (auth: Auth) => Promise<void>
   readonly subscribe: (
     auth: Auth,
     listener: (user: User | null) => void,
@@ -31,6 +33,7 @@ type FirebaseAuthOperations = {
 const defaultOperations: FirebaseAuthOperations = {
   createUser: createUserWithEmailAndPassword,
   signIn: signInWithEmailAndPassword,
+  signOut,
   subscribe: onAuthStateChanged,
 }
 
@@ -116,6 +119,14 @@ export class FirebaseAuthRepository implements AuthRepository {
       return mapFirebaseUser(credential.user)
     } catch (error) {
       throw mapFirebaseAuthError(error)
+    }
+  }
+
+  async signOut(): Promise<void> {
+    try {
+      await this.operations.signOut(this.auth)
+    } catch {
+      throw new AuthError('sign-out-failed')
     }
   }
 

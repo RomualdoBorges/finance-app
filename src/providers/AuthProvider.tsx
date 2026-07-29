@@ -36,6 +36,7 @@ export function AuthProvider({ children, service }: AuthProviderProps) {
         service.registerWithEmailAndPassword(email, password),
       signInWithEmailAndPassword: (email, password) =>
         service.signInWithEmailAndPassword(email, password),
+      signOut: () => service.signOut(),
     }),
     [service, status, user],
   )

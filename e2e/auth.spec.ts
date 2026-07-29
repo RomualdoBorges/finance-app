@@ -22,3 +22,26 @@ test('valida os campos básicos sem acessar o Firebase', async ({ page }) => {
   await expect(page.getByText('Informe sua senha.')).toBeVisible()
   await expect(page.getByLabel('E-mail')).toBeFocused()
 })
+
+test('encerra a sessão e remove o conteúdo protegido', async ({ page }) => {
+  await page.goto('/?e2e-authenticated')
+
+  await expect(
+    page.getByRole('heading', {
+      level: 1,
+      name: 'Fundação da aplicação configurada',
+    }),
+  ).toBeVisible()
+  await page.getByRole('button', { name: 'Sair da conta' }).click()
+
+  await expect(page).toHaveURL(/\/login$/)
+  await expect(
+    page.getByRole('heading', { level: 1, name: 'Entre na sua conta' }),
+  ).toBeVisible()
+  await expect(
+    page.getByRole('heading', {
+      level: 1,
+      name: 'Fundação da aplicação configurada',
+    }),
+  ).not.toBeVisible()
+})
