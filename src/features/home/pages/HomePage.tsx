@@ -12,25 +12,39 @@ const installedLibraries = [
 
 export function HomePage() {
   return (
-    <section className="foundation-page" aria-labelledby="foundation-title">
-      <p className="flex items-center gap-2">
+    <section
+      className="mx-auto flex min-h-screen max-w-3xl flex-col justify-center gap-6 px-6 py-12"
+      aria-labelledby="foundation-title"
+    >
+      <p className="flex items-center gap-2 font-medium text-primary">
         <CircleDollarSign aria-hidden="true" size={20} />
         <span>Financeiro</span>
       </p>
-      <h1 id="foundation-title">Fundação da aplicação configurada</h1>
-      <p>
+      <h1
+        className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl"
+        id="foundation-title"
+      >
+        Fundação da aplicação configurada
+      </h1>
+      <p className="max-w-2xl text-muted-foreground">
         A estrutura inicial está pronta para receber as próximas etapas do
         produto.
       </p>
 
       <ThemeSelector />
 
-      <h2>Bibliotecas principais</h2>
-      <ul>
-        {installedLibraries.map((library) => (
-          <li key={library}>{library}</li>
-        ))}
-      </ul>
+      <div className="rounded-xl border border-border bg-surface p-6">
+        <h2 className="text-lg font-semibold text-foreground">
+          Bibliotecas principais
+        </h2>
+        <ul className="mt-3 grid gap-2 text-sm text-muted-foreground sm:grid-cols-2">
+          {installedLibraries.map((library) => (
+            <li className="rounded-md bg-muted px-3 py-2" key={library}>
+              {library}
+            </li>
+          ))}
+        </ul>
+      </div>
     </section>
   )
 }

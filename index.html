@@ -7,7 +7,44 @@
       name="description"
       content="Aplicação web para organização financeira pessoal."
     />
-    <meta name="theme-color" content="#f7f7f8" />
+    <script>
+      try {
+        const storageKey = 'finance-app:interface-preferences'
+        const storedPreferences = JSON.parse(
+          localStorage.getItem(storageKey) ?? 'null',
+        )
+        const isValidPreferences =
+          typeof storedPreferences === 'object' &&
+          storedPreferences !== null &&
+          !Array.isArray(storedPreferences) &&
+          Object.keys(storedPreferences).length === 1
+        const storedTheme = isValidPreferences
+          ? storedPreferences.theme
+          : undefined
+        const theme =
+          storedTheme === 'light' ||
+          storedTheme === 'dark' ||
+          storedTheme === 'system'
+            ? storedTheme
+            : 'system'
+        const resolvedTheme =
+          theme === 'system'
+            ? matchMedia('(prefers-color-scheme: dark)').matches
+              ? 'dark'
+              : 'light'
+            : theme
+
+        document.documentElement.setAttribute('data-theme', resolvedTheme)
+        document.documentElement.style.colorScheme = resolvedTheme
+      } catch {
+        const resolvedTheme = matchMedia('(prefers-color-scheme: dark)').matches
+          ? 'dark'
+          : 'light'
+
+        document.documentElement.setAttribute('data-theme', resolvedTheme)
+        document.documentElement.style.colorScheme = resolvedTheme
+      }
+    </script>
     <title>Financeiro — Fundação</title>
   </head>
   <body>

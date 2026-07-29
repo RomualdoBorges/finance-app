@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 
+import { getStoredTheme, persistTheme } from '../lib/theme'
 import type { Theme } from '../schemas/interfacePreferencesSchema'
 
 type InterfacePreferencesState = {
@@ -9,8 +10,9 @@ type InterfacePreferencesState = {
 
 export const useInterfacePreferencesStore = create<InterfacePreferencesState>()(
   (set) => ({
-    theme: 'system',
+    theme: getStoredTheme(),
     setTheme: (theme) => {
+      persistTheme(theme)
       set({ theme })
     },
   }),
