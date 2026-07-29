@@ -16,7 +16,7 @@ Nenhum item está concluído por existir no template. Checkboxes só são marcad
 - [x] Lucide React
 - [x] Biblioteca de gráficos e `date-fns`
 - [x] Firebase SDK e camada de repositories/services
-- [ ] Estrutura por features, providers, layouts e guards
+- [x] Estrutura por features, providers, layouts e guards
 - [ ] Vitest, Testing Library, Playwright e mocks de repositories
 - [ ] Projetos Firebase separados para dev, staging e produção
 - [ ] Emulator Suite para Auth, Firestore, Functions, Storage e Hosting

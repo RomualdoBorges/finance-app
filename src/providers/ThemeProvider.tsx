@@ -1,10 +1,10 @@
-import { useEffect } from 'react'
+import { useEffect, type ReactNode } from 'react'
 
-import { applyTheme, getSystemThemeQuery } from '../../lib/theme'
-import { useInterfacePreferencesStore } from '../../stores/interfacePreferencesStore'
+import { applyTheme, getSystemThemeQuery } from '../lib/theme'
+import { useInterfacePreferencesStore } from '../stores/interfacePreferencesStore'
 
 type ThemeProviderProps = {
-  children: React.ReactNode
+  readonly children: ReactNode
 }
 
 export function ThemeProvider({ children }: ThemeProviderProps) {

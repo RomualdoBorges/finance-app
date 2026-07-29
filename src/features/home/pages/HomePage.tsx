@@ -1,7 +1,5 @@
 import { CircleDollarSign } from 'lucide-react'
 
-import { ThemeSelector } from '../../../components/shared/ThemeSelector'
-
 const installedLibraries = [
   'React Router',
   'TanStack Query',
@@ -13,7 +11,7 @@ const installedLibraries = [
 export function HomePage() {
   return (
     <section
-      className="mx-auto flex min-h-screen max-w-3xl flex-col justify-center gap-6 px-6 py-12"
+      className="mx-auto flex min-h-[calc(100vh-4.25rem)] max-w-3xl flex-col justify-center gap-6 px-6 py-12"
       aria-labelledby="foundation-title"
     >
       <p className="flex items-center gap-2 font-medium text-primary">
@@ -30,8 +28,6 @@ export function HomePage() {
         A estrutura inicial está pronta para receber as próximas etapas do
         produto.
       </p>
-
-      <ThemeSelector />
 
       <div className="rounded-xl border border-border bg-surface p-6">
         <h2 className="text-lg font-semibold text-foreground">
