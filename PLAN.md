@@ -6,7 +6,11 @@ Nenhum item está concluído por existir no template. Checkboxes só são marcad
 
 - [x] React, TypeScript strict e Vite
 - [ ] `pnpm` como gerenciador exclusivo
-- [ ] React Router, TanStack Query, Zustand, React Hook Form e Zod
+- [x] React Router
+- [x] TanStack Query
+- [x] Zustand
+- [x] React Hook Form
+- [x] Zod
 - [ ] Tailwind CSS, Radix UI e Lucide React
 - [ ] Biblioteca de gráficos e `date-fns`
 - [ ] Firebase SDK e camada de repositories/services
