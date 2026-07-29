@@ -1,3 +1,5 @@
+import { CircleDollarSign } from 'lucide-react'
+
 const installedLibraries = [
   'React Router',
   'TanStack Query',
@@ -9,7 +11,10 @@ const installedLibraries = [
 export function HomePage() {
   return (
     <section className="foundation-page" aria-labelledby="foundation-title">
-      <p>Financeiro</p>
+      <p className="flex items-center gap-2">
+        <CircleDollarSign aria-hidden="true" size={20} />
+        <span>Financeiro</span>
+      </p>
       <h1 id="foundation-title">Fundação da aplicação configurada</h1>
       <p>
         A estrutura inicial está pronta para receber as próximas etapas do
