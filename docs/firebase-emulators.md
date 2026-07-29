@@ -12,6 +12,13 @@ pnpm install
 
 Copie `.env.example` para `.env.local` e mantenha `VITE_FIREBASE_USE_EMULATORS=true`. O arquivo `.env.local` contém configuração local, é ignorado pelo Git e nunca deve ser versionado.
 
+As variáveis são validadas antes da inicialização do Firebase. Nomes `VITE_*`
+desconhecidos, valores malformados e a ausência de host ou porta quando os
+emuladores estão habilitados interrompem a aplicação com uma mensagem que
+identifica a variável, sem registrar seu valor. Consulte
+[`firebase-configuration.md`](./firebase-configuration.md) para a separação
+entre configuração Web pública e secrets de backend.
+
 ## Uso diário
 
 Terminal 1:
