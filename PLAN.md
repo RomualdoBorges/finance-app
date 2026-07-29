@@ -5,7 +5,7 @@ Nenhum item está concluído por existir no template. Checkboxes só são marcad
 ## Milestone 0 — Fundação e ambientes
 
 - [x] React, TypeScript strict e Vite
-- [ ] `pnpm` como gerenciador exclusivo
+- [x] `pnpm` como gerenciador exclusivo
 - [x] React Router
 - [x] TanStack Query
 - [x] Zustand

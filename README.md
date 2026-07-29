@@ -1,5 +1,15 @@
 # React + TypeScript + Vite
 
+## Gerenciador de pacotes
+
+Este repositório aceita exclusivamente o `pnpm` na versão exata declarada no
+campo `packageManager` do `package.json` raiz. Use `pnpm install` e mantenha
+somente o `pnpm-lock.yaml` da raiz; instalações com npm, yarn ou bun e
+lockfiles concorrentes são rejeitados pelo `preinstall`.
+
+Execute `pnpm verify:package-manager` para verificar o repositório e
+`pnpm test:package-manager` para testar essas proteções.
+
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
 Currently, two official plugins are available:

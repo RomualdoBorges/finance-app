@@ -5,6 +5,7 @@
   "packageManager": "pnpm@11.7.0",
   "type": "module",
   "scripts": {
+    "preinstall": "node scripts/verify-package-manager.mjs --require-pnpm",
     "dev": "vite",
     "build": "tsc -b && vite build",
     "typecheck": "tsc -b --noEmit",
@@ -13,6 +14,7 @@
     "format:check": "prettier --check \"src/**/*.{ts,tsx,css}\" \"*.{js,ts,json,html,yaml,yml}\"",
     "test": "vitest",
     "test:run": "vitest run",
+    "test:package-manager": "node --test scripts/verify-package-manager.test.mjs",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "firebase:emulators": "firebase emulators:start --only auth,firestore,functions,storage,hosting",
@@ -22,6 +24,7 @@
     "firebase:emulators:exec": "firebase emulators:exec --only auth,firestore,functions,storage,hosting \"pnpm functions:typecheck\"",
     "functions:build": "pnpm --dir functions build",
     "functions:typecheck": "pnpm --dir functions typecheck",
+    "verify:package-manager": "node scripts/verify-package-manager.mjs",
     "validate": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm test:run && pnpm build",
     "preview": "vite preview"
   },
