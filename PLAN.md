@@ -15,7 +15,7 @@ Nenhum item está concluído por existir no template. Checkboxes só são marcad
 - [x] Radix UI
 - [x] Lucide React
 - [x] Biblioteca de gráficos e `date-fns`
-- [ ] Firebase SDK e camada de repositories/services
+- [x] Firebase SDK e camada de repositories/services
 - [ ] Estrutura por features, providers, layouts e guards
 - [ ] Vitest, Testing Library, Playwright e mocks de repositories
 - [ ] Projetos Firebase separados para dev, staging e produção
