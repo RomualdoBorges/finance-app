@@ -12,9 +12,13 @@ import { GroupError } from '../features/group/domain/GroupError'
 import { useGroup } from '../features/group/hooks/useGroup'
 import { userProfileQueryKey } from '../features/user/queries/userProfileQueryKeys'
 import type { UserProfile } from '../features/user/domain/UserProfile'
+import { UserProfileError } from '../features/user/domain/UserProfileError'
+import type { UserRepository } from '../features/user/repositories/UserRepository'
+import { UserService } from '../features/user/services/UserService'
 import { renderWithProviders } from '../test/render'
 import { AuthContext } from './AuthContext'
 import { GroupProvider } from './GroupProvider'
+import { UserProfileProvider } from './UserProfileProvider'
 import { UserProfileContext } from './UserProfileContext'
 
 const user: AuthenticatedUser = {
@@ -114,6 +118,103 @@ function renderProvider(bootstrapPersonalGroup: ReturnType<typeof vi.fn>) {
 }
 
 describe('GroupProvider', () => {
+  it('inicia bootstrap quando um perfil legado chega a ready', async () => {
+    const legacyProfile = { ...profile, displayName: 'Pessoa Legada' }
+    const ensureUserProfile = vi.fn().mockResolvedValue(legacyProfile)
+    const repository: UserRepository = {
+      ensureUserProfile,
+      getUserProfile: vi.fn(),
+      ensureActiveGroupId: vi.fn(),
+      getActiveGroupId: vi.fn(),
+    }
+    const bootstrap = vi
+      .fn()
+      .mockResolvedValue({ group, activeGroup: group, membership, profile })
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    })
+
+    renderWithProviders(
+      <QueryClientProvider client={queryClient}>
+        <AuthContext.Provider
+          value={{
+            status: 'authenticated',
+            user,
+            registerWithEmailAndPassword: vi.fn(),
+            signInWithEmailAndPassword: vi.fn(),
+            signOut: vi.fn(),
+            sendPasswordResetEmail: vi.fn(),
+            sendVerificationEmail: vi.fn(),
+            reloadAuthenticatedUser: vi.fn(),
+            updatePassword: vi.fn(),
+            deleteCurrentUser: vi.fn(),
+          }}
+        >
+          <UserProfileProvider service={new UserService(repository)}>
+            <GroupProvider
+              service={{ bootstrapPersonalGroup: bootstrap } as never}
+            >
+              <Probe />
+            </GroupProvider>
+          </UserProfileProvider>
+        </AuthContext.Provider>
+      </QueryClientProvider>,
+    )
+
+    expect(
+      await screen.findByText('ready:user-1:owner:none'),
+    ).toBeInTheDocument()
+    expect(ensureUserProfile).toHaveBeenCalledOnce()
+    expect(bootstrap).toHaveBeenCalledWith({ userId: 'user-1' })
+  })
+
+  it('não inicia bootstrap quando o perfil mantém erro real', async () => {
+    const ensureUserProfile = vi
+      .fn()
+      .mockRejectedValue(new UserProfileError('permission-denied'))
+    const repository: UserRepository = {
+      ensureUserProfile,
+      getUserProfile: vi.fn(),
+      ensureActiveGroupId: vi.fn(),
+      getActiveGroupId: vi.fn(),
+    }
+    const bootstrap = vi.fn()
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    })
+
+    renderWithProviders(
+      <QueryClientProvider client={queryClient}>
+        <AuthContext.Provider
+          value={{
+            status: 'authenticated',
+            user,
+            registerWithEmailAndPassword: vi.fn(),
+            signInWithEmailAndPassword: vi.fn(),
+            signOut: vi.fn(),
+            sendPasswordResetEmail: vi.fn(),
+            sendVerificationEmail: vi.fn(),
+            reloadAuthenticatedUser: vi.fn(),
+            updatePassword: vi.fn(),
+            deleteCurrentUser: vi.fn(),
+          }}
+        >
+          <UserProfileProvider service={new UserService(repository)}>
+            <GroupProvider
+              service={{ bootstrapPersonalGroup: bootstrap } as never}
+            >
+              <Probe />
+            </GroupProvider>
+          </UserProfileProvider>
+        </AuthContext.Provider>
+      </QueryClientProvider>,
+    )
+
+    await waitFor(() => expect(ensureUserProfile).toHaveBeenCalledOnce())
+    expect(screen.getByText('idle:none:none:none')).toBeInTheDocument()
+    expect(bootstrap).not.toHaveBeenCalled()
+  })
+
   it('representa loading, ready e atualiza o cache do perfil', async () => {
     let resolveBootstrap:
       | ((value: {

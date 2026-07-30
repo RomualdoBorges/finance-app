@@ -109,7 +109,10 @@ afterAll(async () => {
   await environment.cleanup()
 })
 
-async function seedProfile(uid: string) {
+async function seedProfile(
+  uid: string,
+  overrides: Readonly<Record<string, unknown>> = {},
+) {
   await environment.withSecurityRulesDisabled(async (context) => {
     await setDoc(doc(context.firestore(), 'users', uid), {
       email: 'pessoa@example.com',
@@ -117,6 +120,7 @@ async function seedProfile(uid: string) {
       photoURL: null,
       createdAt: Timestamp.fromDate(new Date('2026-01-01T00:00:00Z')),
       updatedAt: Timestamp.fromDate(new Date('2026-01-01T00:00:00Z')),
+      ...overrides,
     })
   })
 }
@@ -287,6 +291,65 @@ describe('Firestore Rules do bootstrap pessoal', () => {
 })
 
 describe('Firestore Rules de activeGroupId', () => {
+  it('permite sincronizar campos básicos preservando activeGroupId legado', async () => {
+    await seedProfile('user-1', { activeGroupId: 'user-1' })
+    const firestore = environment.authenticatedContext('user-1').firestore()
+    const profile = doc(firestore, 'users', 'user-1')
+
+    await assertSucceeds(
+      updateDoc(profile, {
+        email: 'novo@example.com',
+        displayName: 'Pessoa Atualizada',
+        photoURL: 'https://example.com/avatar.png',
+        updatedAt: serverTimestamp(),
+      }),
+    )
+
+    const snapshot = await getDoc(profile)
+    if (snapshot.data()?.['activeGroupId'] !== 'user-1') {
+      throw new Error('activeGroupId legado não foi preservado')
+    }
+  })
+
+  it('não permite trocar nem remover activeGroupId legado inválido', async () => {
+    await seedProfile('user-1', { activeGroupId: 'user-1' })
+    const profile = doc(
+      environment.authenticatedContext('user-1').firestore(),
+      'users',
+      'user-1',
+    )
+
+    await assertFails(
+      updateDoc(profile, {
+        activeGroupId: 'missing',
+        updatedAt: serverTimestamp(),
+      }),
+    )
+    await assertFails(
+      setDoc(
+        profile,
+        {
+          email: 'pessoa@example.com',
+          displayName: null,
+          photoURL: null,
+          createdAt: Timestamp.fromDate(new Date('2026-01-01T00:00:00Z')),
+          updatedAt: serverTimestamp(),
+        },
+        { merge: false },
+      ),
+    )
+  })
+
+  it('bloqueia activeGroupId inválido na criação de perfil', async () => {
+    const firestore = environment.authenticatedContext('user-1').firestore()
+    await assertFails(
+      setDoc(doc(firestore, 'users', 'user-1'), {
+        ...validProfile,
+        activeGroupId: 'missing',
+      }),
+    )
+  })
+
   it('permite grupo explícito com membership owner ativa', async () => {
     await seedProfile('user-1')
     await seedPersonalGroup('group-explicit', 'user-1')
@@ -330,6 +393,39 @@ describe('Firestore Rules de activeGroupId', () => {
         }),
       )
     }
+  })
+
+  it('mantém campos extras, createdAt e perfil alheio bloqueados', async () => {
+    await seedProfile('user-1', { activeGroupId: 'legacy-group' })
+    const ownerProfile = doc(
+      environment.authenticatedContext('user-1').firestore(),
+      'users',
+      'user-1',
+    )
+    const otherProfile = doc(
+      environment.authenticatedContext('user-2').firestore(),
+      'users',
+      'user-1',
+    )
+
+    await assertFails(
+      updateDoc(ownerProfile, {
+        extra: true,
+        updatedAt: serverTimestamp(),
+      }),
+    )
+    await assertFails(
+      updateDoc(ownerProfile, {
+        createdAt: Timestamp.fromDate(new Date('2030-01-01T00:00:00Z')),
+        updatedAt: serverTimestamp(),
+      }),
+    )
+    await assertFails(
+      updateDoc(otherProfile, {
+        displayName: 'Invasor',
+        updatedAt: serverTimestamp(),
+      }),
+    )
   })
 })
 

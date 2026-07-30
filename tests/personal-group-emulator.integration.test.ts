@@ -6,8 +6,17 @@ import {
   type Auth,
 } from 'firebase/auth'
 import {
+  initializeTestEnvironment,
+  type RulesTestEnvironment,
+} from '@firebase/rules-unit-testing'
+import { readFile } from 'node:fs/promises'
+import {
   connectFirestoreEmulator,
+  doc,
+  getDoc,
   getFirestore,
+  setDoc,
+  Timestamp,
   type Firestore,
 } from 'firebase/firestore'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
@@ -28,13 +37,17 @@ type TestClient = {
 }
 
 const clients: TestClient[] = []
+let legacyEnvironment: RulesTestEnvironment
 
-function createClient(label: string): TestClient {
+function createClient(
+  label: string,
+  projectId = 'finance-app-dev-23ac7',
+): TestClient {
   const app = initializeApp(
     {
       apiKey: 'fake-api-key',
-      authDomain: 'finance-app-dev-23ac7.firebaseapp.com',
-      projectId: 'finance-app-dev-23ac7',
+      authDomain: `${projectId}.firebaseapp.com`,
+      projectId,
       appId: '1:000000000000:web:0000000000000000000000',
     },
     `integration-${label}-${crypto.randomUUID()}`,
@@ -69,15 +82,81 @@ function createCategoryService(firestore: Firestore) {
   return new CategoryService(new FirestoreCategoryRepository(firestore))
 }
 
-beforeAll(() => {
-  // A limpeza do Firestore é feita pelo arquivo de Rules no mesmo worker.
+beforeAll(async () => {
+  legacyEnvironment = await initializeTestEnvironment({
+    projectId: 'finance-app-dev-23ac7',
+    firestore: {
+      host: '127.0.0.1',
+      port: 8080,
+      rules: await readFile('firestore.rules', 'utf8'),
+    },
+  })
 })
 
 afterAll(async () => {
   await Promise.all(clients.map(async ({ app }) => deleteApp(app)))
+  await legacyEnvironment.cleanup()
 })
 
 describe('bootstrap pessoal contra Auth e Firestore Emulators', () => {
+  it('recupera perfil legado antes de provisionar o modelo novo', async () => {
+    const client = createClient('legacy')
+    const credential = await createUserWithEmailAndPassword(
+      client.auth,
+      `legacy-${crypto.randomUUID()}@example.com`,
+      'senha-segura',
+    )
+    const uid = credential.user.uid
+    const originalTimestamp = Timestamp.fromDate(
+      new Date('2026-01-01T00:00:00Z'),
+    )
+    await legacyEnvironment.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), 'users', uid), {
+        email: 'email-antigo@example.com',
+        displayName: null,
+        photoURL: null,
+        activeGroupId: uid,
+        createdAt: originalTimestamp,
+        updatedAt: originalTimestamp,
+      })
+    })
+
+    const dependencies = createGroupService(client.firestore)
+    const synchronizedProfile = await dependencies.users.ensureUserProfile({
+      uid,
+      email: credential.user.email,
+      displayName: 'Pessoa Legada',
+      photoURL: credential.user.photoURL,
+      emailVerified: credential.user.emailVerified,
+    })
+    expect(synchronizedProfile).toMatchObject({
+      activeGroupId: uid,
+      displayName: 'Pessoa Legada',
+      email: credential.user.email,
+    })
+
+    const initial = await dependencies.service.bootstrapPersonalGroup({
+      userId: uid,
+    })
+    const repeated = await dependencies.service.bootstrapPersonalGroup({
+      userId: uid,
+    })
+    const reloadedProfile = await dependencies.users.getUserProfile(uid)
+    const groupSnapshot = await getDoc(
+      doc(client.firestore, 'financialGroups', uid),
+    )
+    const membershipSnapshot = await getDoc(
+      doc(client.firestore, 'financialGroups', uid, 'members', uid),
+    )
+
+    expect(groupSnapshot.exists()).toBe(true)
+    expect(membershipSnapshot.exists()).toBe(true)
+    expect(reloadedProfile?.activeGroupId).toBe(uid)
+    expect(initial.activeGroup.id).toBe(uid)
+    expect(repeated.group.createdAt).toEqual(initial.group.createdAt)
+    expect(repeated.membership.createdAt).toEqual(initial.membership.createdAt)
+  })
+
   it('persiste, relê, é idempotente e isola dois usuários', async () => {
     const first = createClient('first')
     const firstCredential = await createUserWithEmailAndPassword(

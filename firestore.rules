@@ -98,6 +98,19 @@ service cloud.firestore {
         );
     }
 
+    function preservesActiveGroupId() {
+      return !request.resource.data.diff(resource.data).affectedKeys()
+        .hasAny(['activeGroupId']);
+    }
+
+    function hasValidActiveGroupUpdate() {
+      return preservesActiveGroupId()
+        || (
+          request.resource.data.keys().hasAny(['activeGroupId'])
+          && hasValidActiveGroup()
+        );
+    }
+
     function hasValidGroupShape(groupId) {
       return request.resource.data.keys().hasOnly([
           'name',
@@ -224,7 +237,7 @@ service cloud.firestore {
 
       allow update: if isSelf(userId)
         && hasValidUserProfileShape()
-        && hasValidActiveGroup()
+        && hasValidActiveGroupUpdate()
         && request.resource.data.createdAt == resource.data.createdAt
         && request.resource.data.updatedAt == request.time;
 
