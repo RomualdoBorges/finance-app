@@ -39,7 +39,7 @@ Nenhum item está concluído por existir no template. Checkboxes só são marcad
 - [x] Exclusão de usuário e preparação para MFA
 - [x] Documento do usuário
 - [x] Rotas protegidas
-- [ ] Criação idempotente do grupo individual e membro owner
+- [x] Criação idempotente do grupo individual e membro owner
 - [ ] Grupo ativo/padrão
 
 ### Milestone 2 — Categorias e contas

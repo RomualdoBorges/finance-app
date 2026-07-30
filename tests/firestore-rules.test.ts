@@ -14,6 +14,7 @@ import {
   setDoc,
   Timestamp,
   updateDoc,
+  writeBatch,
 } from 'firebase/firestore'
 
 let environment: RulesTestEnvironment
@@ -53,6 +54,24 @@ async function seedProfile(uid: string) {
       photoURL: null,
       createdAt: Timestamp.fromDate(new Date('2026-01-01T00:00:00Z')),
       updatedAt: Timestamp.fromDate(new Date('2026-01-01T00:00:00Z')),
+    })
+  })
+}
+
+async function seedPersonalGroup(uid: string) {
+  await environment.withSecurityRulesDisabled(async (context) => {
+    const firestore = context.firestore()
+    const createdAt = Timestamp.fromDate(new Date('2026-01-01T00:00:00Z'))
+    await setDoc(doc(firestore, 'groups', uid), {
+      name: 'Meu Financeiro',
+      createdAt,
+      updatedAt: createdAt,
+    })
+    await setDoc(doc(firestore, 'groupMembers', uid), {
+      groupId: uid,
+      userId: uid,
+      role: 'OWNER',
+      createdAt,
     })
   })
 }
@@ -166,5 +185,87 @@ describe('Firestore Rules de users/{uid}', () => {
       }),
     )
     await assertFails(deleteDoc(own))
+  })
+})
+
+describe('Firestore Rules de grupo individual', () => {
+  it('permite criar grupo e owner juntos somente para o próprio UID', async () => {
+    const firestore = environment.authenticatedContext('user-1').firestore()
+    const batch = writeBatch(firestore)
+    batch.set(doc(firestore, 'groups', 'user-1'), {
+      name: 'Meu Financeiro',
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    })
+    batch.set(doc(firestore, 'groupMembers', 'user-1'), {
+      groupId: 'user-1',
+      userId: 'user-1',
+      role: 'OWNER',
+      createdAt: serverTimestamp(),
+    })
+
+    await assertSucceeds(batch.commit())
+
+    const foreignBatch = writeBatch(firestore)
+    foreignBatch.set(doc(firestore, 'groups', 'user-2'), {
+      name: 'Meu Financeiro',
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    })
+    foreignBatch.set(doc(firestore, 'groupMembers', 'user-2'), {
+      groupId: 'user-2',
+      userId: 'user-2',
+      role: 'OWNER',
+      createdAt: serverTimestamp(),
+    })
+    await assertFails(foreignBatch.commit())
+  })
+
+  it('bloqueia criação parcial, papel adicional e IDs não determinísticos', async () => {
+    const firestore = environment.authenticatedContext('user-1').firestore()
+
+    await assertFails(
+      setDoc(doc(firestore, 'groups', 'user-1'), {
+        name: 'Meu Financeiro',
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      }),
+    )
+
+    const batch = writeBatch(firestore)
+    batch.set(doc(firestore, 'groups', 'user-1'), {
+      name: 'Meu Financeiro',
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    })
+    batch.set(doc(firestore, 'groupMembers', 'random-id'), {
+      groupId: 'user-1',
+      userId: 'user-1',
+      role: 'MEMBER',
+      createdAt: serverTimestamp(),
+    })
+    await assertFails(batch.commit())
+  })
+
+  it('permite leitura somente ao owner e bloqueia mutação posterior', async () => {
+    await seedPersonalGroup('user-1')
+    const ownerFirestore = environment
+      .authenticatedContext('user-1')
+      .firestore()
+    const outsiderFirestore = environment
+      .authenticatedContext('user-2')
+      .firestore()
+
+    await assertSucceeds(getDoc(doc(ownerFirestore, 'groups', 'user-1')))
+    await assertSucceeds(getDoc(doc(ownerFirestore, 'groupMembers', 'user-1')))
+    await assertFails(getDoc(doc(outsiderFirestore, 'groups', 'user-1')))
+    await assertFails(getDoc(doc(outsiderFirestore, 'groupMembers', 'user-1')))
+    await assertFails(
+      updateDoc(doc(ownerFirestore, 'groups', 'user-1'), {
+        name: 'Outro nome',
+        updatedAt: serverTimestamp(),
+      }),
+    )
+    await assertFails(deleteDoc(doc(ownerFirestore, 'groupMembers', 'user-1')))
   })
 })

@@ -6,6 +6,22 @@ service cloud.firestore {
       return request.auth != null && request.auth.uid == userId;
     }
 
+    function personalMembershipPath(userId) {
+      return /databases/$(database)/documents/groupMembers/$(userId);
+    }
+
+    function personalGroupPath(groupId) {
+      return /databases/$(database)/documents/groups/$(groupId);
+    }
+
+    function isGroupMember(groupId) {
+      return request.auth != null
+        && exists(personalMembershipPath(request.auth.uid))
+        && get(personalMembershipPath(request.auth.uid)).data.groupId == groupId
+        && get(personalMembershipPath(request.auth.uid)).data.userId == request.auth.uid
+        && get(personalMembershipPath(request.auth.uid)).data.role == 'OWNER';
+    }
+
     function hasOnlyUserProfileFields() {
       return request.resource.data.keys().hasOnly([
         'email',
@@ -57,6 +73,59 @@ service cloud.firestore {
         && request.resource.data.updatedAt == request.time;
 
       allow delete: if false;
+    }
+
+    match /groups/{groupId} {
+      // A leitura do próprio ID permite verificar a ausência durante o
+      // bootstrap transacional; grupos existentes só podem ter esse owner.
+      allow read: if isGroupMember(groupId)
+        || (request.auth != null && request.auth.uid == groupId);
+
+      allow create: if request.auth != null
+        && request.auth.uid == groupId
+        && request.resource.data.keys().hasOnly([
+          'name',
+          'createdAt',
+          'updatedAt'
+        ])
+        && request.resource.data.keys().hasAll([
+          'name',
+          'createdAt',
+          'updatedAt'
+        ])
+        && request.resource.data.name == 'Meu Financeiro'
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time
+        && getAfter(personalMembershipPath(request.auth.uid)).data.groupId == groupId
+        && getAfter(personalMembershipPath(request.auth.uid)).data.userId == request.auth.uid
+        && getAfter(personalMembershipPath(request.auth.uid)).data.role == 'OWNER';
+
+      allow update, delete: if false;
+    }
+
+    match /groupMembers/{membershipId} {
+      allow read: if isCurrentUser(membershipId);
+
+      allow create: if isCurrentUser(membershipId)
+        && request.resource.data.keys().hasOnly([
+          'groupId',
+          'userId',
+          'role',
+          'createdAt'
+        ])
+        && request.resource.data.keys().hasAll([
+          'groupId',
+          'userId',
+          'role',
+          'createdAt'
+        ])
+        && request.resource.data.groupId == request.auth.uid
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.role == 'OWNER'
+        && request.resource.data.createdAt == request.time
+        && getAfter(personalGroupPath(request.auth.uid)).data.name == 'Meu Financeiro';
+
+      allow update, delete: if false;
     }
 
     match /{document=**} {
