@@ -1,39 +1,47 @@
-# Grupo individual
+# Grupo pessoal
 
-Após `UserProfileProvider` materializar `users/{uid}`, `GroupProvider` garante o
-grupo individual. Nesta etapa existem somente:
+Após `UserProfileProvider` materializar `users/{uid}`, `GroupProvider` chama o
+caso de uso `GroupService.bootstrapPersonalGroup`. O modelo definitivo é:
 
 ```text
-groups/{uid}
+financialGroups/{groupId}
   name: "Meu Financeiro"
+  type: "personal"
+  currency: "BRL"
+  ownerId: uid
+  status: "active"
   createdAt: Timestamp
   updatedAt: Timestamp
 
-groupMembers/{uid}
-  groupId: uid
+financialGroups/{groupId}/members/{uid}
+  groupId: groupId
   userId: uid
-  role: "OWNER"
+  role: "owner"
+  status: "active"
   createdAt: Timestamp
+  updatedAt: Timestamp
 
 users/{uid}
-  activeGroupId: uid
+  activeGroupId: groupId
 ```
 
-`FirestoreGroupRepository.ensurePersonalGroup` lê os dois documentos em uma
-transação e cria apenas os que estiverem ausentes. Os IDs são determinísticos,
-os timestamps são do servidor e chamadas repetidas não escrevem nem atualizam
-`updatedAt`. A releitura posterior materializa os timestamps no domínio.
+O grupo pessoal inicial usa `groupId = uid` como estratégia determinística
+somente no início do bootstrap. Repositories, Rules de participação e leituras
+posteriores recebem `groupId` e `userId` explicitamente; a arquitetura não trata
+a igualdade entre eles como regra geral.
 
-As Rules permitem o bootstrap conjunto apenas ao usuário autenticado cujo UID é
-o ID do grupo e do vínculo. Grupo e membership não podem ser atualizados ou
-excluídos pelo cliente nesta etapa. A leitura de outro usuário é bloqueada.
+`FirestorePersonalGroupProvisioningRepository` cria grupo e membership juntos
+em uma transação. Ele existe apenas para preservar a atomicidade desse par.
+`FirestoreGroupRepository` lê grupos, `FirestoreMembershipRepository` lê
+participações, e `FirestoreUserRepository` mantém `activeGroupId`.
+`GroupService` coordena essas fronteiras e retorna grupo, grupo ativo,
+membership e perfil consolidados.
 
-Depois de garantir grupo e membership, o mesmo repository preenche
-`activeGroupId` somente se estiver ausente e carrega esse grupo. Se o campo já
-for igual ao UID, não há escrita nem alteração de `updatedAt`.
+Chamadas repetidas não recriam documentos nem alteram timestamps. Depois de
+persistir o grupo ativo, `GroupProvider` atualiza diretamente a query
+`['user-profile', uid]` com o perfil retornado, sem leitura adicional e sem
+fontes divergentes.
 
-`GroupProvider` é a fonte única do grupo corrente e expõe `group`,
-`activeGroup`, `membership`, `status` e `refresh()`. `useActiveGroup()` oferece
-`activeGroup`, `loading`, `error` e `refresh` sem acessar Firestore. Falhas são
-não bloqueantes. Troca de grupo, convites, compartilhamento, outros papéis e
-recursos financeiros continuam fora do escopo.
+O bootstrap continua no cliente nesta etapa, protegido pelas Firestore Rules.
+Múltiplos grupos, troca pela interface, convites e outros papéis não estão
+implementados.

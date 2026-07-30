@@ -9,11 +9,12 @@ etapas separadas:
 2. typecheck do frontend e das Cloud Functions;
 3. lint e formatação;
 4. testes unitários;
-5. build do frontend e das Cloud Functions;
-6. smoke E2E no Chromium com Playwright.
+5. testes de Firestore Rules e integração real de Auth, perfil e grupo nos Emulators;
+6. build do frontend e das Cloud Functions;
+7. smoke E2E no Chromium com Playwright.
 
-O CI não inicia a Emulator Suite, não acessa serviços Firebase reais e não
-realiza deploy. O build e o preview recebem somente uma configuração Web
+O CI inicia somente Auth e Firestore Emulators durante os testes correspondentes,
+não acessa serviços Firebase reais e não realiza deploy. O build e o preview recebem somente uma configuração Web
 Firebase pública e fictícia, com a conexão para Auth, Firestore e Storage
 apontada a hosts e portas locais. Nenhuma credencial ou configuração
 administrativa é usada.
@@ -31,6 +32,7 @@ pnpm functions:typecheck
 pnpm lint
 pnpm format:check
 pnpm test:run
+pnpm test:rules
 pnpm build
 pnpm functions:build
 ```

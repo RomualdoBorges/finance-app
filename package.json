@@ -16,7 +16,7 @@
     "test:run": "vitest run",
     "test:package-manager": "node --test scripts/verify-package-manager.test.mjs",
     "test:e2e": "playwright test",
-    "test:rules": "firebase emulators:exec --only firestore \"pnpm exec vitest run --config vitest.rules.config.ts\"",
+    "test:rules": "firebase emulators:exec --only auth,firestore \"pnpm exec vitest run --config vitest.rules.config.ts\"",
     "test:e2e:ui": "playwright test --ui",
     "firebase:emulators": "firebase emulators:start --only auth,firestore,functions,storage,hosting",
     "firebase:emulators:export": "firebase emulators:export .firebase/emulator-data",

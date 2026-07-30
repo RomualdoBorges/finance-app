@@ -43,4 +43,30 @@ export class E2EUserRepository implements UserRepository {
   getUserProfile(uid: string): Promise<UserProfile | null> {
     return Promise.resolve(this.profiles.get(uid) ?? null)
   }
+
+  ensureActiveGroupId({
+    userId,
+    groupId,
+  }: {
+    readonly userId: string
+    readonly groupId: string
+  }): Promise<UserProfile> {
+    const profile = this.profiles.get(userId)
+    if (profile === undefined) {
+      return Promise.reject(new UserProfileError('not-found'))
+    }
+    if (profile.activeGroupId !== null && profile.activeGroupId !== groupId) {
+      return Promise.reject(new UserProfileError('invalid-profile'))
+    }
+    const updated =
+      profile.activeGroupId === groupId
+        ? profile
+        : { ...profile, activeGroupId: groupId }
+    this.profiles.set(userId, updated)
+    return Promise.resolve(updated)
+  }
+
+  getActiveGroupId(userId: string): Promise<string | null> {
+    return Promise.resolve(this.profiles.get(userId)?.activeGroupId ?? null)
+  }
 }

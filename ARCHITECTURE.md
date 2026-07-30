@@ -33,7 +33,7 @@ Páginas e componentes visuais dependem de hooks/casos de uso e repositories/ser
 
 ### Firebase Authentication
 
-Gerencia cadastro e login por e-mail/senha, Google, sessões, verificação de e-mail, recuperação e atualização de senha, exclusão de usuário e MFA quando habilitado. `request.auth.uid` é a referência primária do usuário. Autenticação não substitui autorização por grupo.
+Gerencia cadastro e login por e-mail/senha, sessões, verificação de e-mail, recuperação e atualização de senha e exclusão da identidade autenticada. Login com Google foi removido do escopo; MFA permanece futuro. `request.auth.uid` é a referência primária do usuário. Autenticação não substitui autorização por grupo.
 
 ### Cloud Firestore
 
@@ -131,15 +131,15 @@ Cada feature separa páginas/componentes, schemas, casos de uso e acesso remoto.
 
 ## Estado no frontend
 
-| Natureza | Responsável |
-| --- | --- |
-| Dados do Firestore e cache de servidor | TanStack Query |
-| Sessão Firebase | Auth Provider |
-| Estado global da UI | Zustand |
-| Formulários | React Hook Form |
-| Validação | Zod |
-| Filtros compartilháveis | URL |
-| Estado local | `useState` |
+| Natureza                               | Responsável     |
+| -------------------------------------- | --------------- |
+| Dados do Firestore e cache de servidor | TanStack Query  |
+| Sessão Firebase                        | Auth Provider   |
+| Estado global da UI                    | Zustand         |
+| Formulários                            | React Hook Form |
+| Validação                              | Zod             |
+| Filtros compartilháveis                | URL             |
+| Estado local                           | `useState`      |
 
 Zustand não replica coleções do Firestore.
 

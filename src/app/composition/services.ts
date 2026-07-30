@@ -9,6 +9,8 @@ import { E2EUserRepository } from '../../features/user/repositories/E2EUserRepos
 import { UserService } from '../../features/user/services/UserService'
 import { E2EGroupRepository } from '../../features/group/repositories/E2EGroupRepository'
 import { FirestoreGroupRepository } from '../../features/group/repositories/FirestoreGroupRepository'
+import { FirestoreMembershipRepository } from '../../features/group/repositories/FirestoreMembershipRepository'
+import { FirestorePersonalGroupProvisioningRepository } from '../../features/group/repositories/FirestorePersonalGroupProvisioningRepository'
 import { GroupService } from '../../features/group/services/GroupService'
 
 const backendHealthRepository = new FirebaseBackendHealthRepository(
@@ -22,14 +24,25 @@ const userRepository =
   import.meta.env.MODE === 'e2e'
     ? new E2EUserRepository()
     : new FirestoreUserRepository(firebaseClients.firestore)
+const e2eGroupRepository =
+  import.meta.env.MODE === 'e2e' ? new E2EGroupRepository() : null
 const groupRepository =
-  import.meta.env.MODE === 'e2e'
-    ? new E2EGroupRepository()
-    : new FirestoreGroupRepository(firebaseClients.firestore)
+  e2eGroupRepository ?? new FirestoreGroupRepository(firebaseClients.firestore)
+const membershipRepository =
+  e2eGroupRepository ??
+  new FirestoreMembershipRepository(firebaseClients.firestore)
+const groupProvisioningRepository =
+  e2eGroupRepository ??
+  new FirestorePersonalGroupProvisioningRepository(firebaseClients.firestore)
 
 export const services = {
   backendHealth: new BackendHealthService(backendHealthRepository),
   auth: new AuthService(authRepository),
   user: new UserService(userRepository),
-  group: new GroupService(groupRepository),
+  group: new GroupService(
+    groupProvisioningRepository,
+    groupRepository,
+    membershipRepository,
+    userRepository,
+  ),
 } as const

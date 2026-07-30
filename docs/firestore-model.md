@@ -50,9 +50,14 @@ O documento básico fica em `/users/{uid}`. O ID corresponde ao UID e não é pe
 
 Documento identificado pelo UID: `displayName`, `email`, `photoURL`, `currency`, `locale`, `timezone`, `emailVerified`, `onboardingCompleted`, `createdAt`, `updatedAt` e referência do grupo padrão/ativo quando adotada. Não armazena senha, hash, token ou credencial bancária.
 
-### `financialGroups` — MVP individual; casal/família na Fase 4
+### `financialGroups` — grupo pessoal no Milestone 1
 
-Campos: `name`, `type` (`individual`, `couple`, `family`), `currency`, `ownerId`, `memberIds`, `createdAt`, `updatedAt`. `memberIds` é desnormalizado para facilitar consultas e Rules.
+O contrato entregue aceita somente `name: "Meu Financeiro"`, `type: "personal"`,
+`currency: "BRL"`, `ownerId`, `status: "active"`, `createdAt` e `updatedAt`.
+O grupo inicial usa um ID determinístico igual ao UID somente durante sua
+criação; todas as APIs posteriores recebem `groupId` explicitamente. Tipos
+compartilhados, outras moedas e eventual desnormalização para consultas serão
+contratados apenas nas fases correspondentes.
 
 ### `invitations` — Fase 4
 
@@ -60,9 +65,12 @@ Convite externo processado por Function. O PDF não define seu esquema; campos d
 
 ## Subcoleções do grupo
 
-### `members` — MVP para owner; papéis completos na Fase 4
+### `members` — owner pessoal no Milestone 1
 
-ID igual ao UID. Campos: `userId`, `displayName`, `email`, `role` (`owner`, `admin`, `member`, `viewer`), `status`, `permissions` (`viewSharedTransactions`, `createTransactions`, `editOwnTransactions`, `editAllTransactions`, `manageAccounts`, `manageCards`, `manageBudgets`, `manageMembers`, `viewReports`) e `joinedAt`.
+O documento fica em `financialGroups/{groupId}/members/{userId}` e contém
+`userId`, `groupId`, `role: "owner"`, `status: "active"`, `createdAt` e
+`updatedAt`. Outros papéis, permissões e dados desnormalizados de participante
+permanecem fora do escopo até a fase de grupos compartilhados.
 
 ### `accounts` — MVP
 
@@ -158,13 +166,13 @@ Histórico mensal identificado por `referenceMonth`. O PDF define o caminho e a 
 
 ## Índices compostos prováveis
 
-| Coleção | Campos |
-| --- | --- |
-| `transactions` | `competenceDate` com `status`, `accountId`, `cardId`, `invoiceId`, `categoryId`, `ownerId` ou `visibility` |
-| `budgets` | `referenceMonth`, `categoryId` |
-| `invoices` | `cardId`, `dueDate` |
-| `invoices` | `cardId`, `status` |
-| `notifications` | `userId`, `read`, `createdAt` |
-| `recurrences` | `status`, `nextExecutionAt` |
+| Coleção         | Campos                                                                                                     |
+| --------------- | ---------------------------------------------------------------------------------------------------------- |
+| `transactions`  | `competenceDate` com `status`, `accountId`, `cardId`, `invoiceId`, `categoryId`, `ownerId` ou `visibility` |
+| `budgets`       | `referenceMonth`, `categoryId`                                                                             |
+| `invoices`      | `cardId`, `dueDate`                                                                                        |
+| `invoices`      | `cardId`, `status`                                                                                         |
+| `notifications` | `userId`, `read`, `createdAt`                                                                              |
+| `recurrences`   | `status`, `nextExecutionAt`                                                                                |
 
 O `groupId` está implícito no caminho das subcoleções; consultas `collectionGroup` podem exigir campo desnormalizado e índices adicionais. Índices efetivos são versionados em `firestore.indexes.json` e ajustados às consultas reais.

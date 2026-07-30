@@ -16,4 +16,15 @@ export class UserService {
   getUserProfile(uid: string): Promise<UserProfile | null> {
     return this.repository.getUserProfile(uid)
   }
+
+  ensureActiveGroupId(input: {
+    readonly userId: string
+    readonly groupId: string
+  }): Promise<UserProfile> {
+    return this.repository.ensureActiveGroupId(input)
+  }
+
+  getActiveGroupId(userId: string): Promise<string | null> {
+    return this.repository.getActiveGroupId(userId)
+  }
 }

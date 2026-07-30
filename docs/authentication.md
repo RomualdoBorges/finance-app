@@ -12,7 +12,7 @@ O `AuthProvider` assina a sessão uma vez, começa em `loading`, publica `authen
 
 ## Fluxos
 
-O cadastro valida e-mail, senha mínima de 6 caracteres e confirmação, cria e autentica o usuário, mas não envia a verificação. O login valida e-mail e senha obrigatórios. Em ambos os casos, os componentes não navegam: os guards reagem à alteração observada da sessão. Depois que o Auth identifica a sessão, o provider de perfil garante idempotentemente `users/{uid}` no Firestore. Quando o perfil fica pronto, o provider de grupo garante `groups/{uid}` e o vínculo `OWNER` em `groupMembers/{uid}`.
+O cadastro valida e-mail, senha mínima de 6 caracteres e confirmação, cria e autentica o usuário, mas não envia a verificação. O login valida e-mail e senha obrigatórios. Login com Google foi removido do escopo. Em ambos os casos, os componentes não navegam: os guards reagem à alteração observada da sessão. Depois que o Auth identifica a sessão, o provider de perfil garante idempotentemente `users/{uid}` no Firestore. Quando o perfil fica pronto, o provider de grupo executa o bootstrap de `financialGroups/{groupId}` e `financialGroups/{groupId}/members/{uid}`, com papel `owner`.
 
 O envio ocorre somente quando o usuário autenticado clica em “Enviar e-mail de verificação” na etapa `/verificar-email`. Não há chamada automática no cadastro, service, hook ou effect de autenticação.
 
@@ -55,4 +55,4 @@ Testes unitários e de integração usam mocks do repository e não acessam rede
 
 Senhas permanecem somente no estado do React Hook Form e não são persistidas em URL, storage, Zustand ou logs. Nenhum token é exposto e nenhum acesso ao Firestore foi adicionado.
 
-Continuam pendentes: confirmação de redefinição por código, MFA, grupos compartilhados e troca de grupo. O documento básico está descrito em `docs/user-profile.md` e o grupo individual ativo em `docs/personal-group.md`. A exclusão remove somente a identidade do Firebase Authentication e, temporariamente, não remove os documentos do Firestore. Nenhuma regra de negócio financeira ou autorização por papéis adicionais foi adicionada nesta etapa.
+Continuam pendentes: confirmação de redefinição por código, MFA, grupos compartilhados e troca de grupo. O documento básico está descrito em `docs/user-profile.md`, o grupo pessoal em `docs/personal-group.md` e a referência ativa em `docs/active-group.md`. A exclusão remove somente a identidade do Firebase Authentication e, temporariamente, não remove os documentos do Firestore; a limpeza ou anonimização permanece pendente antes da primeira release com dados financeiros. Nenhuma regra de negócio financeira ou autorização por papéis adicionais foi adicionada nesta etapa.

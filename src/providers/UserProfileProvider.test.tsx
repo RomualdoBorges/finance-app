@@ -115,6 +115,8 @@ describe('UserProfileProvider', () => {
     const repository: UserRepository = {
       ensureUserProfile,
       getUserProfile: vi.fn(),
+      ensureActiveGroupId: vi.fn(),
+      getActiveGroupId: vi.fn(),
     }
     const user = userEvent.setup()
     renderProvider(repository)
@@ -134,6 +136,8 @@ describe('UserProfileProvider', () => {
     const repository: UserRepository = {
       ensureUserProfile,
       getUserProfile: vi.fn(),
+      ensureActiveGroupId: vi.fn(),
+      getActiveGroupId: vi.fn(),
     }
     renderProvider(repository)
 
@@ -162,6 +166,8 @@ describe('UserProfileProvider', () => {
     const repository: UserRepository = {
       ensureUserProfile,
       getUserProfile: vi.fn(),
+      ensureActiveGroupId: vi.fn(),
+      getActiveGroupId: vi.fn(),
     }
     renderProvider(repository)
 

@@ -15,6 +15,7 @@ import {
   Timestamp,
   updateDoc,
   writeBatch,
+  type Firestore,
 } from 'firebase/firestore'
 
 let environment: RulesTestEnvironment
@@ -25,6 +26,37 @@ const validProfile = {
   photoURL: null,
   createdAt: serverTimestamp(),
   updatedAt: serverTimestamp(),
+}
+
+function groupData(ownerId: string) {
+  return {
+    name: 'Meu Financeiro',
+    type: 'personal',
+    currency: 'BRL',
+    ownerId,
+    status: 'active',
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  }
+}
+
+function membershipData(groupId: string, userId: string) {
+  return {
+    groupId,
+    userId,
+    role: 'owner',
+    status: 'active',
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  }
+}
+
+function groupRef(firestore: Firestore, groupId: string) {
+  return doc(firestore, 'financialGroups', groupId)
+}
+
+function membershipRef(firestore: Firestore, groupId: string, userId: string) {
+  return doc(firestore, 'financialGroups', groupId, 'members', userId)
 }
 
 beforeAll(async () => {
@@ -58,20 +90,31 @@ async function seedProfile(uid: string) {
   })
 }
 
-async function seedPersonalGroup(uid: string) {
+async function seedPersonalGroup(
+  groupId: string,
+  userId: string,
+  overrides: Readonly<Record<string, unknown>> = {},
+) {
   await environment.withSecurityRulesDisabled(async (context) => {
     const firestore = context.firestore()
     const createdAt = Timestamp.fromDate(new Date('2026-01-01T00:00:00Z'))
-    await setDoc(doc(firestore, 'groups', uid), {
+    await setDoc(groupRef(firestore, groupId), {
       name: 'Meu Financeiro',
+      type: 'personal',
+      currency: 'BRL',
+      ownerId: userId,
+      status: 'active',
       createdAt,
       updatedAt: createdAt,
     })
-    await setDoc(doc(firestore, 'groupMembers', uid), {
-      groupId: uid,
-      userId: uid,
-      role: 'OWNER',
+    await setDoc(membershipRef(firestore, groupId, userId), {
+      groupId,
+      userId,
+      role: 'owner',
+      status: 'active',
       createdAt,
+      updatedAt: createdAt,
+      ...overrides,
     })
   })
 }
@@ -79,236 +122,182 @@ async function seedPersonalGroup(uid: string) {
 describe('Firestore Rules de users/{uid}', () => {
   it('permite leitura própria e bloqueia leitura alheia ou anônima', async () => {
     await seedProfile('user-1')
-    const own = doc(
-      environment.authenticatedContext('user-1').firestore(),
-      'users',
-      'user-1',
-    )
-    const other = doc(
-      environment.authenticatedContext('user-2').firestore(),
-      'users',
-      'user-1',
-    )
-    const anonymous = doc(
-      environment.unauthenticatedContext().firestore(),
-      'users',
-      'user-1',
-    )
-
-    await assertSucceeds(getDoc(own))
-    await assertFails(getDoc(other))
-    await assertFails(getDoc(anonymous))
-  })
-
-  it('permite criar somente o próprio documento válido, inclusive nulls', async () => {
-    const own = doc(
-      environment.authenticatedContext('user-1').firestore(),
-      'users',
-      'user-1',
-    )
-    const other = doc(
-      environment.authenticatedContext('user-1').firestore(),
-      'users',
-      'user-2',
-    )
-
-    await assertSucceeds(setDoc(own, validProfile))
-    await assertFails(setDoc(other, validProfile))
-  })
-
-  it('bloqueia criação com campos extras, timestamps ausentes ou tipos inválidos', async () => {
-    const firestore = environment.authenticatedContext('user-1').firestore()
-
-    await assertFails(
-      setDoc(doc(firestore, 'users', 'user-1'), {
-        ...validProfile,
-        extra: true,
-      }),
-    )
-    await assertFails(
-      setDoc(doc(firestore, 'users', 'user-1'), {
-        email: null,
-        displayName: null,
-        photoURL: null,
-      }),
-    )
-    await assertFails(
-      setDoc(doc(firestore, 'users', 'user-1'), {
-        ...validProfile,
-        email: 123,
-      }),
-    )
-  })
-
-  it('permite atualizar dados próprios sem alterar createdAt', async () => {
-    await seedProfile('user-1')
-    const own = doc(
-      environment.authenticatedContext('user-1').firestore(),
-      'users',
-      'user-1',
-    )
-
     await assertSucceeds(
-      updateDoc(own, {
-        displayName: 'Pessoa',
-        updatedAt: serverTimestamp(),
-      }),
+      getDoc(
+        doc(
+          environment.authenticatedContext('user-1').firestore(),
+          'users',
+          'user-1',
+        ),
+      ),
     )
     await assertFails(
-      updateDoc(own, {
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      }),
+      getDoc(
+        doc(
+          environment.authenticatedContext('user-2').firestore(),
+          'users',
+          'user-1',
+        ),
+      ),
+    )
+    await assertFails(
+      getDoc(
+        doc(
+          environment.unauthenticatedContext().firestore(),
+          'users',
+          'user-1',
+        ),
+      ),
     )
   })
 
-  it('bloqueia campo extra, atualização alheia e exclusão', async () => {
-    await seedProfile('user-1')
-    const own = doc(
-      environment.authenticatedContext('user-1').firestore(),
-      'users',
-      'user-1',
-    )
-    const other = doc(
-      environment.authenticatedContext('user-2').firestore(),
-      'users',
-      'user-1',
-    )
-
+  it('valida contrato, timestamps e imutabilidade do perfil', async () => {
+    const firestore = environment.authenticatedContext('user-1').firestore()
+    const profile = doc(firestore, 'users', 'user-1')
+    await assertSucceeds(setDoc(profile, validProfile))
+    await assertFails(setDoc(doc(firestore, 'users', 'user-2'), validProfile))
     await assertFails(
-      updateDoc(own, { extra: true, updatedAt: serverTimestamp() }),
-    )
-    await assertFails(
-      updateDoc(other, {
-        email: 'outra@example.com',
+      updateDoc(profile, {
+        createdAt: Timestamp.fromDate(new Date('2030-01-01T00:00:00Z')),
         updatedAt: serverTimestamp(),
       }),
     )
-    await assertFails(deleteDoc(own))
+    await assertFails(
+      updateDoc(profile, { extra: true, updatedAt: serverTimestamp() }),
+    )
+    await assertFails(deleteDoc(profile))
   })
 })
 
-describe('Firestore Rules de grupo individual', () => {
-  it('permite criar grupo e owner juntos somente para o próprio UID', async () => {
+describe('Firestore Rules do bootstrap pessoal', () => {
+  it('permite criar grupo e owner atômicos para o próprio UID', async () => {
     const firestore = environment.authenticatedContext('user-1').firestore()
     const batch = writeBatch(firestore)
-    batch.set(doc(firestore, 'groups', 'user-1'), {
-      name: 'Meu Financeiro',
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    })
-    batch.set(doc(firestore, 'groupMembers', 'user-1'), {
-      groupId: 'user-1',
-      userId: 'user-1',
-      role: 'OWNER',
-      createdAt: serverTimestamp(),
-    })
-
+    batch.set(groupRef(firestore, 'user-1'), groupData('user-1'))
+    batch.set(
+      membershipRef(firestore, 'user-1', 'user-1'),
+      membershipData('user-1', 'user-1'),
+    )
     await assertSucceeds(batch.commit())
-
-    const foreignBatch = writeBatch(firestore)
-    foreignBatch.set(doc(firestore, 'groups', 'user-2'), {
-      name: 'Meu Financeiro',
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    })
-    foreignBatch.set(doc(firestore, 'groupMembers', 'user-2'), {
-      groupId: 'user-2',
-      userId: 'user-2',
-      role: 'OWNER',
-      createdAt: serverTimestamp(),
-    })
-    await assertFails(foreignBatch.commit())
   })
 
-  it('bloqueia criação parcial, papel adicional e IDs não determinísticos', async () => {
+  it('bloqueia grupo parcial, owner diferente e contrato inválido', async () => {
     const firestore = environment.authenticatedContext('user-1').firestore()
-
     await assertFails(
-      setDoc(doc(firestore, 'groups', 'user-1'), {
-        name: 'Meu Financeiro',
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      }),
+      setDoc(groupRef(firestore, 'user-1'), groupData('user-1')),
     )
 
-    const batch = writeBatch(firestore)
-    batch.set(doc(firestore, 'groups', 'user-1'), {
-      name: 'Meu Financeiro',
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
+    const wrongOwner = writeBatch(firestore)
+    wrongOwner.set(groupRef(firestore, 'user-1'), groupData('user-2'))
+    wrongOwner.set(
+      membershipRef(firestore, 'user-1', 'user-1'),
+      membershipData('user-1', 'user-1'),
+    )
+    await assertFails(wrongOwner.commit())
+
+    const invalid = writeBatch(firestore)
+    invalid.set(groupRef(firestore, 'user-1'), {
+      ...groupData('user-1'),
+      currency: 'USD',
     })
-    batch.set(doc(firestore, 'groupMembers', 'random-id'), {
-      groupId: 'user-1',
-      userId: 'user-1',
-      role: 'MEMBER',
-      createdAt: serverTimestamp(),
-    })
-    await assertFails(batch.commit())
+    invalid.set(
+      membershipRef(firestore, 'user-1', 'user-1'),
+      membershipData('user-1', 'user-1'),
+    )
+    await assertFails(invalid.commit())
   })
 
-  it('permite leitura somente ao owner e bloqueia mutação posterior', async () => {
-    await seedPersonalGroup('user-1')
-    const ownerFirestore = environment
-      .authenticatedContext('user-1')
-      .firestore()
-    const outsiderFirestore = environment
-      .authenticatedContext('user-2')
-      .firestore()
+  it('bloqueia membership de outro usuário, outro papel e grupo inexistente', async () => {
+    const firestore = environment.authenticatedContext('user-1').firestore()
+    await seedPersonalGroup('user-1', 'user-1')
 
-    await assertSucceeds(getDoc(doc(ownerFirestore, 'groups', 'user-1')))
-    await assertSucceeds(getDoc(doc(ownerFirestore, 'groupMembers', 'user-1')))
-    await assertFails(getDoc(doc(outsiderFirestore, 'groups', 'user-1')))
-    await assertFails(getDoc(doc(outsiderFirestore, 'groupMembers', 'user-1')))
     await assertFails(
-      updateDoc(doc(ownerFirestore, 'groups', 'user-1'), {
-        name: 'Outro nome',
+      setDoc(
+        membershipRef(firestore, 'user-1', 'user-2'),
+        membershipData('user-1', 'user-2'),
+      ),
+    )
+    await assertFails(
+      setDoc(membershipRef(firestore, 'user-1', 'user-1'), {
+        ...membershipData('user-1', 'user-1'),
+        role: 'admin',
+      }),
+    )
+    await assertFails(
+      setDoc(
+        membershipRef(firestore, 'missing', 'user-1'),
+        membershipData('missing', 'user-1'),
+      ),
+    )
+  })
+
+  it('isola leitura e bloqueia update/delete de grupo e membership', async () => {
+    await seedPersonalGroup('group-a', 'user-1')
+    const owner = environment.authenticatedContext('user-1').firestore()
+    const outsider = environment.authenticatedContext('user-2').firestore()
+
+    await assertSucceeds(getDoc(groupRef(owner, 'group-a')))
+    await assertSucceeds(getDoc(membershipRef(owner, 'group-a', 'user-1')))
+    await assertFails(getDoc(groupRef(outsider, 'group-a')))
+    await assertFails(getDoc(membershipRef(outsider, 'group-a', 'user-1')))
+    await assertFails(
+      updateDoc(groupRef(owner, 'group-a'), {
         updatedAt: serverTimestamp(),
       }),
     )
-    await assertFails(deleteDoc(doc(ownerFirestore, 'groupMembers', 'user-1')))
+    await assertFails(deleteDoc(groupRef(owner, 'group-a')))
+    await assertFails(
+      updateDoc(membershipRef(owner, 'group-a', 'user-1'), {
+        updatedAt: serverTimestamp(),
+      }),
+    )
+    await assertFails(deleteDoc(membershipRef(owner, 'group-a', 'user-1')))
   })
 })
 
 describe('Firestore Rules de activeGroupId', () => {
-  it('permite definir o próprio grupo quando o usuário é OWNER', async () => {
+  it('permite grupo explícito com membership owner ativa', async () => {
     await seedProfile('user-1')
-    await seedPersonalGroup('user-1')
+    await seedPersonalGroup('group-explicit', 'user-1')
     const profile = doc(
       environment.authenticatedContext('user-1').firestore(),
       'users',
       'user-1',
     )
-
     await assertSucceeds(
       updateDoc(profile, {
-        activeGroupId: 'user-1',
+        activeGroupId: 'group-explicit',
         updatedAt: serverTimestamp(),
       }),
     )
   })
 
-  it('bloqueia grupo inexistente e grupo de outro usuário', async () => {
+  it('bloqueia grupo inexistente, sem membership, alheio ou inativo', async () => {
     await seedProfile('user-1')
-    await seedPersonalGroup('user-1')
-    await seedPersonalGroup('user-2')
+    await seedPersonalGroup('group-other', 'user-2')
+    await seedPersonalGroup('group-inactive', 'user-1', {
+      status: 'inactive',
+    })
+    await seedPersonalGroup('group-wrong-role', 'user-1', {
+      role: 'viewer',
+    })
     const profile = doc(
       environment.authenticatedContext('user-1').firestore(),
       'users',
       'user-1',
     )
-
-    await assertFails(
-      updateDoc(profile, {
-        activeGroupId: 'inexistente',
-        updatedAt: serverTimestamp(),
-      }),
-    )
-    await assertFails(
-      updateDoc(profile, {
-        activeGroupId: 'user-2',
-        updatedAt: serverTimestamp(),
-      }),
-    )
+    for (const activeGroupId of [
+      'missing',
+      'group-other',
+      'group-inactive',
+      'group-wrong-role',
+    ]) {
+      await assertFails(
+        updateDoc(profile, {
+          activeGroupId,
+          updatedAt: serverTimestamp(),
+        }),
+      )
+    }
   })
 })

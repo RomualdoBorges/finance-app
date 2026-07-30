@@ -49,10 +49,12 @@ As primeiras fases usam serviços gerenciados do Firebase, sem servidor backend 
 ### Autenticação e perfil
 
 - Cadastro, login e logout com e-mail e senha;
-- login com Google;
+
+<!-- Login com Google removido do escopo do projeto. -->
+
 - recuperação de senha, verificação de e-mail e atualização de senha;
 - exclusão de usuário;
-- autenticação multifator quando habilitada;
+- preparação arquitetural para autenticação multifator futura;
 - perfil com nome, e-mail, foto, moeda, localidade, fuso horário e estado do onboarding.
 
 ### Onboarding e grupo

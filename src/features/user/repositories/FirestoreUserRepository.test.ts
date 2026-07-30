@@ -133,6 +133,46 @@ describe('FirestoreUserRepository', () => {
     expect(operations.serverTimestamp).not.toHaveBeenCalled()
   })
 
+  it('persiste activeGroupId ausente e retorna o perfil atualizado', async () => {
+    const { repository, operations, reference, serverTimestampValue } =
+      createRepository()
+    operations.getProfile
+      .mockResolvedValueOnce(existingSnapshot)
+      .mockResolvedValueOnce({
+        ...existingSnapshot,
+        data: { ...profileData, activeGroupId: 'group-explicit' },
+      })
+
+    await expect(
+      repository.ensureActiveGroupId({
+        userId: 'user-1',
+        groupId: 'group-explicit',
+      }),
+    ).resolves.toMatchObject({ activeGroupId: 'group-explicit' })
+    expect(operations.mergeProfile).toHaveBeenCalledWith(reference, {
+      activeGroupId: 'group-explicit',
+      updatedAt: serverTimestampValue,
+    })
+  })
+
+  it('não reescreve activeGroupId quando já corresponde', async () => {
+    const { repository, operations } = createRepository()
+    operations.getProfile.mockResolvedValue({
+      ...existingSnapshot,
+      data: { ...profileData, activeGroupId: 'group-explicit' },
+    })
+
+    await repository.ensureActiveGroupId({
+      userId: 'user-1',
+      groupId: 'group-explicit',
+    })
+    expect(operations.mergeProfile).not.toHaveBeenCalled()
+    expect(operations.serverTimestamp).not.toHaveBeenCalled()
+    await expect(repository.getActiveGroupId('user-1')).resolves.toBe(
+      'group-explicit',
+    )
+  })
+
   it.each([
     ['email', 'novo@example.com'],
     ['displayName', 'Pessoa'],

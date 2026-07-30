@@ -208,4 +208,44 @@ export class FirestoreUserRepository implements UserRepository {
       throw mapUserProfileError(error)
     }
   }
+
+  async ensureActiveGroupId({
+    userId,
+    groupId,
+  }: {
+    readonly userId: string
+    readonly groupId: string
+  }): Promise<UserProfile> {
+    validateUid(userId)
+    validateUid(groupId)
+
+    try {
+      const reference = this.operations.profileReference(this.firestore, userId)
+      const profile = mapUserProfileSnapshot(
+        await this.operations.getProfile(reference),
+      )
+      if (profile === null) throw new UserProfileError('not-found')
+      if (profile.activeGroupId === groupId) return profile
+      if (profile.activeGroupId !== null) {
+        throw new UserProfileError('invalid-profile')
+      }
+
+      await this.operations.mergeProfile(reference, {
+        activeGroupId: groupId,
+        updatedAt: this.operations.serverTimestamp(),
+      })
+      const updatedProfile = mapUserProfileSnapshot(
+        await this.operations.getProfile(reference),
+      )
+      if (updatedProfile === null) throw new UserProfileError('not-found')
+      return updatedProfile
+    } catch (error) {
+      throw mapUserProfileError(error)
+    }
+  }
+
+  async getActiveGroupId(userId: string): Promise<string | null> {
+    const profile = await this.getUserProfile(userId)
+    return profile?.activeGroupId ?? null
+  }
 }

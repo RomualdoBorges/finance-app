@@ -2,24 +2,34 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    function isCurrentUser(userId) {
-      return request.auth != null && request.auth.uid == userId;
+    function isAuthenticated() {
+      return request.auth != null;
     }
 
-    function personalMembershipPath(userId) {
-      return /databases/$(database)/documents/groupMembers/$(userId);
+    function isSelf(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
     }
 
-    function personalGroupPath(groupId) {
-      return /databases/$(database)/documents/groups/$(groupId);
+    function groupPath(groupId) {
+      return /databases/$(database)/documents/financialGroups/$(groupId);
     }
 
-    function isGroupMember(groupId) {
-      return request.auth != null
-        && exists(personalMembershipPath(request.auth.uid))
-        && get(personalMembershipPath(request.auth.uid)).data.groupId == groupId
-        && get(personalMembershipPath(request.auth.uid)).data.userId == request.auth.uid
-        && get(personalMembershipPath(request.auth.uid)).data.role == 'OWNER';
+    function membershipPath(groupId, userId) {
+      return /databases/$(database)/documents/financialGroups/$(groupId)/members/$(userId);
+    }
+
+    function isActiveOwnerMembership(membership) {
+      return membership.data.userId == request.auth.uid
+        && membership.data.role == 'owner'
+        && membership.data.status == 'active';
+    }
+
+    function isActiveMember(groupId) {
+      return isAuthenticated()
+        && exists(membershipPath(groupId, request.auth.uid))
+        && isActiveOwnerMembership(
+          get(membershipPath(groupId, request.auth.uid))
+        );
     }
 
     function hasOnlyUserProfileFields() {
@@ -57,7 +67,8 @@ service cloud.firestore {
         && hasAllUserProfileFields()
         && hasValidNullableStrings()
         && (!request.resource.data.keys().hasAny(['activeGroupId'])
-          || request.resource.data.activeGroupId is string)
+          || (request.resource.data.activeGroupId is string
+            && request.resource.data.activeGroupId.size() > 0))
         && request.resource.data.createdAt is timestamp
         && request.resource.data.updatedAt is timestamp;
     }
@@ -65,26 +76,89 @@ service cloud.firestore {
     function hasValidActiveGroup() {
       return !request.resource.data.keys().hasAny(['activeGroupId'])
         || (
-          exists(personalGroupPath(request.resource.data.activeGroupId))
-          && exists(personalMembershipPath(request.auth.uid))
-          && get(personalMembershipPath(request.auth.uid)).data.groupId
-            == request.resource.data.activeGroupId
-          && get(personalMembershipPath(request.auth.uid)).data.userId
-            == request.auth.uid
-          && get(personalMembershipPath(request.auth.uid)).data.role == 'OWNER'
+          exists(groupPath(request.resource.data.activeGroupId))
+          && exists(
+            membershipPath(
+              request.resource.data.activeGroupId,
+              request.auth.uid
+            )
+          )
+          && isActiveOwnerMembership(
+            get(
+              membershipPath(
+                request.resource.data.activeGroupId,
+                request.auth.uid
+              )
+            )
+          )
         );
     }
 
-    match /users/{userId} {
-      allow read: if isCurrentUser(userId);
+    function hasValidGroupShape(groupId) {
+      return request.resource.data.keys().hasOnly([
+          'name',
+          'type',
+          'currency',
+          'ownerId',
+          'status',
+          'createdAt',
+          'updatedAt'
+        ])
+        && request.resource.data.keys().hasAll([
+          'name',
+          'type',
+          'currency',
+          'ownerId',
+          'status',
+          'createdAt',
+          'updatedAt'
+        ])
+        && groupId.size() > 0
+        && request.resource.data.name == 'Meu Financeiro'
+        && request.resource.data.type == 'personal'
+        && request.resource.data.currency == 'BRL'
+        && request.resource.data.ownerId == request.auth.uid
+        && request.resource.data.status == 'active'
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time;
+    }
 
-      allow create: if isCurrentUser(userId)
+    function hasValidOwnerMembershipShape(groupId, userId) {
+      return request.resource.data.keys().hasOnly([
+          'userId',
+          'groupId',
+          'role',
+          'status',
+          'createdAt',
+          'updatedAt'
+        ])
+        && request.resource.data.keys().hasAll([
+          'userId',
+          'groupId',
+          'role',
+          'status',
+          'createdAt',
+          'updatedAt'
+        ])
+        && isSelf(userId)
+        && request.resource.data.userId == userId
+        && request.resource.data.groupId == groupId
+        && request.resource.data.role == 'owner'
+        && request.resource.data.status == 'active'
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time;
+    }
+
+    match /users/{userId} {
+      allow read: if isSelf(userId);
+
+      allow create: if isSelf(userId)
         && hasValidUserProfileShape()
         && hasValidActiveGroup()
         && request.resource.data.createdAt == request.time
         && request.resource.data.updatedAt == request.time;
 
-      allow update: if isCurrentUser(userId)
+      allow update: if isSelf(userId)
         && hasValidUserProfileShape()
         && hasValidActiveGroup()
         && request.resource.data.createdAt == resource.data.createdAt
@@ -93,57 +167,42 @@ service cloud.firestore {
       allow delete: if false;
     }
 
-    match /groups/{groupId} {
-      // A leitura do próprio ID permite verificar a ausência durante o
-      // bootstrap transacional; grupos existentes só podem ter esse owner.
-      allow read: if isGroupMember(groupId)
-        || (request.auth != null && request.auth.uid == groupId);
+    match /financialGroups/{groupId} {
+      // A transação de bootstrap precisa ler a ausência do grupo determinístico.
+      allow get: if isActiveMember(groupId)
+        || (isSelf(groupId) && !exists(groupPath(groupId)));
+      allow list: if false;
 
-      allow create: if request.auth != null
-        && request.auth.uid == groupId
-        && request.resource.data.keys().hasOnly([
-          'name',
-          'createdAt',
-          'updatedAt'
-        ])
-        && request.resource.data.keys().hasAll([
-          'name',
-          'createdAt',
-          'updatedAt'
-        ])
-        && request.resource.data.name == 'Meu Financeiro'
-        && request.resource.data.createdAt == request.time
-        && request.resource.data.updatedAt == request.time
-        && getAfter(personalMembershipPath(request.auth.uid)).data.groupId == groupId
-        && getAfter(personalMembershipPath(request.auth.uid)).data.userId == request.auth.uid
-        && getAfter(personalMembershipPath(request.auth.uid)).data.role == 'OWNER';
+      allow create: if isAuthenticated()
+        && groupId == request.auth.uid
+        && hasValidGroupShape(groupId)
+        && existsAfter(membershipPath(groupId, request.auth.uid))
+        && isActiveOwnerMembership(
+          getAfter(membershipPath(groupId, request.auth.uid))
+        );
 
       allow update, delete: if false;
-    }
 
-    match /groupMembers/{membershipId} {
-      allow read: if isCurrentUser(membershipId);
+      match /members/{userId} {
+        // A mesma transação precisa ler a ausência do membership determinístico.
+        allow get: if isSelf(userId)
+          && (
+            isActiveMember(groupId)
+            || (
+              groupId == request.auth.uid
+              && !exists(membershipPath(groupId, userId))
+            )
+          );
+        allow list: if false;
 
-      allow create: if isCurrentUser(membershipId)
-        && request.resource.data.keys().hasOnly([
-          'groupId',
-          'userId',
-          'role',
-          'createdAt'
-        ])
-        && request.resource.data.keys().hasAll([
-          'groupId',
-          'userId',
-          'role',
-          'createdAt'
-        ])
-        && request.resource.data.groupId == request.auth.uid
-        && request.resource.data.userId == request.auth.uid
-        && request.resource.data.role == 'OWNER'
-        && request.resource.data.createdAt == request.time
-        && getAfter(personalGroupPath(request.auth.uid)).data.name == 'Meu Financeiro';
+        allow create: if hasValidOwnerMembershipShape(groupId, userId)
+          && existsAfter(groupPath(groupId))
+          && getAfter(groupPath(groupId)).data.ownerId == request.auth.uid
+          && getAfter(groupPath(groupId)).data.type == 'personal'
+          && getAfter(groupPath(groupId)).data.status == 'active';
 
-      allow update, delete: if false;
+        allow update, delete: if false;
+      }
     }
 
     match /{document=**} {

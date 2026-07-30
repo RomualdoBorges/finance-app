@@ -4,4 +4,9 @@ import type { UserProfile } from '../domain/UserProfile'
 export interface UserRepository {
   ensureUserProfile(user: AuthenticatedUser): Promise<UserProfile>
   getUserProfile(uid: string): Promise<UserProfile | null>
+  ensureActiveGroupId(input: {
+    readonly userId: string
+    readonly groupId: string
+  }): Promise<UserProfile>
+  getActiveGroupId(userId: string): Promise<string | null>
 }

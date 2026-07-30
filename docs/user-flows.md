@@ -11,7 +11,7 @@ Os fluxos do MVP e das fases futuras são separados para impedir implementação
 3. Usuário autenticado segue obrigatoriamente à etapa de verificação.
 4. Após a autenticação, a aplicação garante idempotentemente o perfil básico em `users/{uid}`; senha, token e credencial financeira não são persistidos.
 
-Também são previstos cadastro/login com Google, recuperação e atualização de senha, logout, exclusão de usuário e MFA quando habilitado.
+Também são previstos recuperação e atualização de senha, logout e exclusão da identidade autenticada. Login com Google foi removido do escopo; MFA permanece futuro.
 
 ### Login
 
@@ -68,11 +68,11 @@ Nesta etapa, a exclusão remove somente a conta do Firebase Authentication. O do
 
 ### Onboarding e grupo individual
 
-1. Backend verifica se o onboarding já foi processado.
-2. Cria idempotentemente perfil, grupo `individual` e membro `owner`.
+1. Nesta etapa, o caso de uso do cliente verifica se o bootstrap já foi processado; uma Cloud Function não foi criada.
+2. Cria idempotentemente perfil, grupo `personal` e membro `owner` em `financialGroups/{groupId}/members/{uid}`.
 3. Define o grupo como ativo/padrão.
-4. Usuário configura moeda/localidade quando necessário e cria a primeira conta.
-5. Repetição não cria perfil, grupo ou participação duplicados.
+4. O ID inicial é determinístico, mas leituras posteriores usam `activeGroupId` explicitamente.
+5. Repetição não cria perfil, grupo ou participação duplicados nem altera timestamps.
 
 ### Contas
 

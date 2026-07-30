@@ -26,8 +26,20 @@ const profile: UserProfile = {
 function createRepository() {
   const ensureUserProfile = vi.fn().mockResolvedValue(profile)
   const getUserProfile = vi.fn().mockResolvedValue(profile)
-  const repository: UserRepository = { ensureUserProfile, getUserProfile }
-  return { repository, ensureUserProfile, getUserProfile }
+  const ensureActiveGroupId = vi.fn().mockResolvedValue(profile)
+  const getActiveGroupId = vi.fn().mockResolvedValue(null)
+  const repository: UserRepository = {
+    ensureUserProfile,
+    getUserProfile,
+    ensureActiveGroupId,
+    getActiveGroupId,
+  }
+  return {
+    repository,
+    ensureUserProfile,
+    getUserProfile,
+    ensureActiveGroupId,
+  }
 }
 
 describe('UserService', () => {
@@ -39,6 +51,19 @@ describe('UserService', () => {
     await expect(service.getUserProfile('user-1')).resolves.toBe(profile)
     expect(ensureUserProfile).toHaveBeenCalledWith(user)
     expect(getUserProfile).toHaveBeenCalledWith('user-1')
+  })
+
+  it('mantém activeGroupId na fronteira do usuário', async () => {
+    const { repository, ensureActiveGroupId } = createRepository()
+    const service = new UserService(repository)
+    await service.ensureActiveGroupId({
+      userId: 'user-1',
+      groupId: 'group-explicit',
+    })
+    expect(ensureActiveGroupId).toHaveBeenCalledWith({
+      userId: 'user-1',
+      groupId: 'group-explicit',
+    })
   })
 
   it('propaga erro sanitizado', async () => {

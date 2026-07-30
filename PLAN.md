@@ -31,16 +31,29 @@ Nenhum item está concluído por existir no template. Checkboxes só são marcad
 
 <!-- Login com Google removido do escopo do projeto. -->
 
-- [ ] Autenticação complementar
+- [x] Autenticação complementar
   - [x] Logout
   - [x] Recuperação de senha
   - [x] Verificação de e-mail
   - [x] Atualização de senha
-- [x] Exclusão de usuário e preparação para MFA
+- [x] Exclusão da identidade autenticada e preparação para MFA
+- [ ] Estratégia de limpeza ou anonimização dos dados persistidos antes da primeira release com dados financeiros
 - [x] Documento do usuário
 - [x] Rotas protegidas
 - [x] Criação idempotente do grupo individual e membro owner
 - [x] Grupo ativo/padrão
+
+### Correção arquitetural antes do Milestone 2
+
+- [x] Modelo definitivo `financialGroups/{groupId}`
+- [x] Memberships em `financialGroups/{groupId}/members/{userId}`
+- [x] Papel inicial padronizado como `owner`
+- [x] Repositories de grupo, membership e preferências do usuário separados
+- [x] Bootstrap pessoal idempotente com ID determinístico
+- [x] Cache de `activeGroupId` consistente com o grupo ativo
+- [x] Firestore Rules adaptadas e fortalecidas
+- [x] Testes de Rules e integração com Emulators no CI
+- [x] Documentação do Milestone 1 alinhada
 
 ### Milestone 2 — Categorias e contas
 

@@ -4,11 +4,13 @@ import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 
 import type { AuthenticatedUser } from '../features/auth/domain/AuthenticatedUser'
-import type { PersonalGroup } from '../features/group/domain/Group'
+import type {
+  FinancialGroup,
+  GroupMembership,
+} from '../features/group/domain/Group'
 import { GroupError } from '../features/group/domain/GroupError'
 import { useGroup } from '../features/group/hooks/useGroup'
-import type { GroupRepository } from '../features/group/repositories/GroupRepository'
-import { GroupService } from '../features/group/services/GroupService'
+import { userProfileQueryKey } from '../features/user/queries/userProfileQueryKeys'
 import type { UserProfile } from '../features/user/domain/UserProfile'
 import { renderWithProviders } from '../test/render'
 import { AuthContext } from './AuthContext'
@@ -23,20 +25,23 @@ const user: AuthenticatedUser = {
   emailVerified: true,
 }
 const timestamp = new Date('2026-01-01T00:00:00Z')
-const personalGroup: PersonalGroup = {
-  group: {
-    id: 'user-1',
-    name: 'Meu Financeiro',
-    createdAt: timestamp,
-    updatedAt: timestamp,
-  },
-  membership: {
-    id: 'user-1',
-    groupId: 'user-1',
-    userId: 'user-1',
-    role: 'OWNER',
-    createdAt: timestamp,
-  },
+const group: FinancialGroup = {
+  id: 'user-1',
+  name: 'Meu Financeiro',
+  type: 'personal',
+  currency: 'BRL',
+  ownerId: 'user-1',
+  status: 'active',
+  createdAt: timestamp,
+  updatedAt: timestamp,
+}
+const membership: GroupMembership = {
+  groupId: 'user-1',
+  userId: 'user-1',
+  role: 'owner',
+  status: 'active',
+  createdAt: timestamp,
+  updatedAt: timestamp,
 }
 const profile: UserProfile = {
   id: 'user-1',
@@ -48,13 +53,19 @@ const profile: UserProfile = {
   updatedAt: timestamp,
 }
 
-function GroupProbe() {
-  const { activeGroup, membership, status, error, refresh } = useGroup()
+function Probe() {
+  const {
+    activeGroup,
+    membership: currentMembership,
+    status,
+    error,
+    refresh,
+  } = useGroup()
   return (
     <>
       <span>
-        {status}:{activeGroup?.id ?? 'none'}:{membership?.role ?? 'none'}:
-        {error?.code ?? 'none'}
+        {status}:{activeGroup?.id ?? 'none'}:{currentMembership?.role ?? 'none'}
+        :{error?.code ?? 'none'}
       </span>
       <button type="button" onClick={() => void refresh()}>
         Tentar novamente
@@ -63,12 +74,12 @@ function GroupProbe() {
   )
 }
 
-function renderProvider(repository: GroupRepository) {
+function renderProvider(bootstrapPersonalGroup: ReturnType<typeof vi.fn>) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   })
-
-  return renderWithProviders(
+  const service = { bootstrapPersonalGroup }
+  const result = renderWithProviders(
     <QueryClientProvider client={queryClient}>
       <AuthContext.Provider
         value={{
@@ -92,76 +103,66 @@ function renderProvider(repository: GroupRepository) {
             refreshProfile: vi.fn(),
           }}
         >
-          <GroupProvider service={new GroupService(repository)}>
-            <GroupProbe />
+          <GroupProvider service={service as never}>
+            <Probe />
           </GroupProvider>
         </UserProfileContext.Provider>
       </AuthContext.Provider>
     </QueryClientProvider>,
   )
-}
-
-function createRepository() {
-  const ensurePersonalGroup = vi.fn().mockResolvedValue(personalGroup)
-  const ensureActiveGroup = vi.fn().mockResolvedValue(profile)
-  const getActiveGroup = vi.fn().mockResolvedValue(personalGroup.group)
-  const repository: GroupRepository = {
-    ensurePersonalGroup,
-    getGroup: vi.fn(),
-    getMembership: vi.fn(),
-    ensureActiveGroup,
-    getActiveGroup,
-  }
-  return {
-    repository,
-    ensurePersonalGroup,
-    ensureActiveGroup,
-    getActiveGroup,
-  }
+  return { ...result, queryClient }
 }
 
 describe('GroupProvider', () => {
-  it('executa o bootstrap em ordem e publica o grupo ativo', async () => {
-    const {
-      repository,
-      ensurePersonalGroup,
-      ensureActiveGroup,
-      getActiveGroup,
-    } = createRepository()
-    renderProvider(repository)
-
-    expect(
-      await screen.findByText('ready:user-1:OWNER:none'),
-    ).toBeInTheDocument()
-    expect(ensurePersonalGroup).toHaveBeenCalledTimes(1)
-    expect(ensureActiveGroup).toHaveBeenCalledWith('user-1', 'user-1')
-    expect(getActiveGroup).toHaveBeenCalledWith('user-1')
-    expect(ensurePersonalGroup.mock.invocationCallOrder[0]).toBeLessThan(
-      ensureActiveGroup.mock.invocationCallOrder[0] ?? 0,
+  it('representa loading, ready e atualiza o cache do perfil', async () => {
+    let resolveBootstrap:
+      | ((value: {
+          group: FinancialGroup
+          activeGroup: FinancialGroup
+          membership: GroupMembership
+          profile: UserProfile
+        }) => void)
+      | undefined
+    const bootstrap = vi.fn(
+      () =>
+        new Promise<{
+          group: FinancialGroup
+          activeGroup: FinancialGroup
+          membership: GroupMembership
+          profile: UserProfile
+        }>((resolve) => {
+          resolveBootstrap = resolve
+        }),
     )
-    expect(ensureActiveGroup.mock.invocationCallOrder[0]).toBeLessThan(
-      getActiveGroup.mock.invocationCallOrder[0] ?? 0,
+    const { queryClient } = renderProvider(bootstrap)
+    expect(screen.getByText('loading:none:none:none')).toBeInTheDocument()
+
+    resolveBootstrap?.({ group, activeGroup: group, membership, profile })
+    expect(
+      await screen.findByText('ready:user-1:owner:none'),
+    ).toBeInTheDocument()
+    expect(queryClient.getQueryData(userProfileQueryKey('user-1'))).toEqual(
+      profile,
     )
   })
 
-  it('expõe erro sanitizado e refaz todo o bootstrap no retry', async () => {
-    const userEventController = userEvent.setup()
-    const { repository, ensureActiveGroup } = createRepository()
-    ensureActiveGroup
+  it('expõe erro e refresh repete somente o caso de uso', async () => {
+    const browser = userEvent.setup()
+    const bootstrap = vi
+      .fn()
       .mockRejectedValueOnce(new GroupError('unavailable'))
-      .mockResolvedValueOnce(profile)
-    renderProvider(repository)
+      .mockResolvedValueOnce({ group, activeGroup: group, membership, profile })
+    renderProvider(bootstrap)
 
     expect(
       await screen.findByText('error:none:none:unavailable'),
     ).toBeInTheDocument()
-    await userEventController.click(
+    await browser.click(
       screen.getByRole('button', { name: 'Tentar novamente' }),
     )
-
     await waitFor(() =>
-      expect(screen.getByText('ready:user-1:OWNER:none')).toBeInTheDocument(),
+      expect(screen.getByText('ready:user-1:owner:none')).toBeInTheDocument(),
     )
-    expect(ensureActiveGroup).toHaveBeenCalledTimes(2)
+    expect(bootstrap).toHaveBeenCalledTimes(2)
   })
 })

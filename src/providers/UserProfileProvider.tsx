@@ -5,11 +5,13 @@ import { useAuth } from '../features/auth/hooks/useAuth'
 import type { UserProfileError } from '../features/user/domain/UserProfileError'
 import type { UserService } from '../features/user/services/UserService'
 import {
+  userProfileQueryKey,
+  userProfileQueryRoot,
+} from '../features/user/queries/userProfileQueryKeys'
+import {
   UserProfileContext,
   type UserProfileContextValue,
 } from './UserProfileContext'
-
-const userProfileQueryKey = (uid: string) => ['user-profile', uid] as const
 
 type UserProfileProviderProps = {
   readonly children: ReactNode
@@ -41,7 +43,7 @@ export function UserProfileProvider({
 
   useEffect(() => {
     if (authStatus === 'unauthenticated') {
-      queryClient.removeQueries({ queryKey: ['user-profile'] })
+      queryClient.removeQueries({ queryKey: userProfileQueryRoot })
     }
   }, [authStatus, queryClient])
 

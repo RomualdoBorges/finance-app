@@ -4,10 +4,13 @@ import { useEffect, type ReactNode } from 'react'
 import { useAuth } from '../features/auth/hooks/useAuth'
 import { GroupError } from '../features/group/domain/GroupError'
 import type { GroupService } from '../features/group/services/GroupService'
+import {
+  personalGroupQueryKey,
+  personalGroupQueryRoot,
+} from '../features/group/queries/groupQueryKeys'
 import { useUserProfile } from '../features/user/hooks/useUserProfile'
+import { userProfileQueryKey } from '../features/user/queries/userProfileQueryKeys'
 import { GroupContext, type GroupContextValue } from './GroupContext'
-
-const groupQueryKey = (uid: string) => ['personal-group', uid] as const
 
 type GroupProviderProps = {
   readonly children: ReactNode
@@ -24,19 +27,14 @@ export function GroupProvider({ children, service }: GroupProviderProps) {
     profileStatus === 'ready' &&
     profile !== null
   const query = useQuery({
-    queryKey: groupQueryKey(user?.uid ?? 'idle'),
-    queryFn: () => {
+    queryKey: personalGroupQueryKey(user?.uid ?? 'idle'),
+    queryFn: async () => {
       if (user === null) {
         throw new Error('Group query was enabled without a user')
       }
-      return service.ensurePersonalGroup(user).then(async (personalGroup) => {
-        await service.ensureActiveGroup(user.uid, personalGroup.group.id)
-        const activeGroup = await service.getActiveGroup(user.uid)
-        if (activeGroup === null) {
-          throw new GroupError('not-found')
-        }
-        return { ...personalGroup, activeGroup }
-      })
+      const result = await service.bootstrapPersonalGroup({ userId: user.uid })
+      queryClient.setQueryData(userProfileQueryKey(user.uid), result.profile)
+      return result
     },
     enabled,
     retry: false,
@@ -48,7 +46,7 @@ export function GroupProvider({ children, service }: GroupProviderProps) {
 
   useEffect(() => {
     if (authStatus === 'unauthenticated') {
-      queryClient.removeQueries({ queryKey: ['personal-group'] })
+      queryClient.removeQueries({ queryKey: personalGroupQueryRoot })
     }
   }, [authStatus, queryClient])
 
