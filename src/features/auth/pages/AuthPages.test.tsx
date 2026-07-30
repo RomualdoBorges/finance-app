@@ -53,6 +53,10 @@ function renderAuthPages(
             path={routePaths.home}
             element={<h1>Página inicial protegida</h1>}
           />
+          <Route
+            path={routePaths.emailVerification}
+            element={<h1>Verificar e-mail</h1>}
+          />
         </Routes>
       </AuthProvider>,
       { initialEntries: [initialEntry] },
@@ -179,7 +183,7 @@ describe('páginas de autenticação', () => {
     expect(screen.getByRole('button', { name: 'Entrando…' })).toBeDisabled()
   })
 
-  it('navega após login quando a sessão autenticada é observada', async () => {
+  it('navega para verificação após login não verificado observado', async () => {
     const user = userEvent.setup()
     const page = renderAuthPages(undefined, (repository) => {
       repository.signInWithEmailAndPassword.mockResolvedValue(authenticatedUser)
@@ -189,12 +193,12 @@ describe('páginas de autenticação', () => {
     page.authenticate()
     expect(
       await screen.findByRole('heading', {
-        name: 'Página inicial protegida',
+        name: 'Verificar e-mail',
       }),
     ).toBeInTheDocument()
   })
 
-  it('navega após cadastro quando a sessão autenticada é observada', async () => {
+  it('navega para verificação após cadastro observado', async () => {
     const user = userEvent.setup()
     const page = renderAuthPages(routePaths.register, (repository) => {
       repository.registerWithEmailAndPassword.mockResolvedValue(
@@ -208,7 +212,7 @@ describe('páginas de autenticação', () => {
     page.authenticate()
     expect(
       await screen.findByRole('heading', {
-        name: 'Página inicial protegida',
+        name: 'Verificar e-mail',
       }),
     ).toBeInTheDocument()
     expect(page.repository.sendVerificationEmail.mock.calls).toHaveLength(0)

@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
 
 test('navega entre login e cadastro', async ({ page }) => {
-  await page.goto('/login')
+  await page.goto('/entrar')
   await page.getByRole('link', { name: 'Cadastre-se' }).click()
   await expect(
     page.getByRole('heading', { level: 1, name: 'Crie sua conta' }),
@@ -15,7 +15,7 @@ test('navega entre login e cadastro', async ({ page }) => {
 })
 
 test('valida os campos básicos sem acessar o Firebase', async ({ page }) => {
-  await page.goto('/login')
+  await page.goto('/entrar')
   await page.getByRole('button', { name: 'Entrar' }).click()
 
   await expect(page.getByText('Informe seu e-mail.')).toBeVisible()
@@ -26,7 +26,7 @@ test('valida os campos básicos sem acessar o Firebase', async ({ page }) => {
 test('solicita recuperação de senha sem revelar a existência da conta', async ({
   page,
 }) => {
-  await page.goto('/login')
+  await page.goto('/entrar')
   await page.getByRole('link', { name: 'Esqueci minha senha' }).click()
 
   await expect(
@@ -55,7 +55,7 @@ test('encerra a sessão e remove o conteúdo protegido', async ({ page }) => {
   ).toBeVisible()
   await page.getByRole('button', { name: 'Sair da conta' }).click()
 
-  await expect(page).toHaveURL(/\/login$/)
+  await expect(page).toHaveURL(/\/entrar$/)
   await expect(
     page.getByRole('heading', { level: 1, name: 'Entre na sua conta' }),
   ).toBeVisible()
@@ -143,7 +143,7 @@ test('protege a atualização de senha por sessão e verificação', async ({
   page,
 }) => {
   await page.goto('/conta/alterar-senha')
-  await expect(page).toHaveURL(/\/login$/)
+  await expect(page).toHaveURL(/\/entrar$/)
 
   await page.goto('/conta/alterar-senha?e2e-authenticated')
   await expect(page).toHaveURL(/\/verificar-email$/)
@@ -152,15 +152,15 @@ test('protege a atualização de senha por sessão e verificação', async ({
   ).toBeVisible()
 })
 
-test('valida, exclui e redireciona após encerrar a sessão', async ({ page }) => {
+test('valida, exclui e redireciona após encerrar a sessão', async ({
+  page,
+}) => {
   await page.goto('/conta/excluir?e2e-authenticated&e2e-email-verified')
 
   await page.getByRole('button', { name: 'Excluir conta' }).click()
   await expect(page.getByText('Informe sua senha atual.')).toBeVisible()
   await expect(
-    page.getByText(
-      'Confirme que você entende que esta ação é permanente.',
-    ),
+    page.getByText('Confirme que você entende que esta ação é permanente.'),
   ).toBeVisible()
 
   await page.getByLabel('Senha atual').fill('senha-atual-incorreta')
@@ -173,13 +173,36 @@ test('valida, exclui e redireciona após encerrar a sessão', async ({ page }) =
 
   await page.getByLabel('Senha atual').fill('senha-atual-valida')
   await page.getByRole('button', { name: 'Excluir conta' }).click()
-  await expect(page).toHaveURL(/\/login$/)
+  await expect(page).toHaveURL(/\/entrar$/)
 })
 
 test('protege a exclusão por sessão e verificação', async ({ page }) => {
   await page.goto('/conta/excluir')
-  await expect(page).toHaveURL(/\/login$/)
+  await expect(page).toHaveURL(/\/entrar$/)
 
   await page.goto('/conta/excluir?e2e-authenticated')
   await expect(page).toHaveURL(/\/verificar-email$/)
+})
+
+test('restaura o destino completo após autenticação e verificação', async ({
+  page,
+}) => {
+  await page.goto(
+    '/conta/alterar-senha?origem=configuracoes&e2e-authenticated#seguranca',
+  )
+  await expect(page).toHaveURL(/\/verificar-email/)
+
+  await page.getByRole('button', { name: 'Já verifiquei meu e-mail' }).click()
+  await expect(page).toHaveURL(
+    /\/conta\/alterar-senha\?origem=configuracoes&e2e-authenticated#seguranca$/,
+  )
+})
+
+test('impede usuário verificado de acessar páginas públicas de autenticação', async ({
+  page,
+}) => {
+  for (const path of ['/entrar', '/cadastro', '/recuperar-senha']) {
+    await page.goto(`${path}?e2e-authenticated&e2e-email-verified`)
+    await expect(page).toHaveURL(/\/$/)
+  }
 })

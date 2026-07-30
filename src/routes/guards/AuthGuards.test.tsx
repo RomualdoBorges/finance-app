@@ -46,7 +46,7 @@ function renderGuards(
       <MemoryRouter initialEntries={[entry]}>
         <Routes>
           <Route element={<PublicOnlyGuard />}>
-            <Route path="/login" element={<h1>Login</h1>} />
+            <Route path="/entrar" element={<h1>Login</h1>} />
           </Route>
           <Route element={<ProtectedRouteGuard />}>
             <Route element={<EmailVerificationRouteGuard />}>
@@ -72,7 +72,7 @@ function renderGuards(
 
 describe('guards de autenticação', () => {
   it('PublicOnlyGuard bloqueia usuário autenticado', () => {
-    renderGuards('authenticated', '/login', true)
+    renderGuards('authenticated', '/entrar', true)
     expect(
       screen.getByRole('heading', { name: 'Protegida' }),
     ).toBeInTheDocument()
@@ -81,6 +81,18 @@ describe('guards de autenticação', () => {
   it('ProtectedRouteGuard bloqueia usuário não autenticado', () => {
     renderGuards('unauthenticated', '/')
     expect(screen.getByRole('heading', { name: 'Login' })).toBeInTheDocument()
+  })
+
+  it('PublicOnlyGuard permite conteúdo público sem sessão', () => {
+    renderGuards('unauthenticated', '/entrar')
+    expect(screen.getByRole('heading', { name: 'Login' })).toBeInTheDocument()
+  })
+
+  it('PublicOnlyGuard envia autenticado não verificado à verificação', () => {
+    renderGuards('authenticated', '/entrar')
+    expect(
+      screen.getByRole('heading', { name: 'Verificar e-mail' }),
+    ).toBeInTheDocument()
   })
 
   it('redireciona usuário não verificado para a etapa de verificação', () => {
@@ -153,7 +165,7 @@ describe('guards de autenticação', () => {
   })
 
   it.each([
-    '/login',
+    '/entrar',
     '/',
     '/verificar-email',
     '/conta/alterar-senha',

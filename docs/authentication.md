@@ -16,7 +16,18 @@ O cadastro valida e-mail, senha mínima de 6 caracteres e confirmação, cria e 
 
 O envio ocorre somente quando o usuário autenticado clica em “Enviar e-mail de verificação” na etapa `/verificar-email`. Não há chamada automática no cadastro, service, hook ou effect de autenticação.
 
-`ProtectedRouteGuard` trata somente a presença da sessão: durante `loading`, aguarda; sem usuário autenticado, redireciona para `/login`. Dentro dele, `VerifiedEmailGuard` redireciona usuários com `emailVerified: false` das rotas autenticadas normais para `/verificar-email`. `EmailVerificationRouteGuard` permite que esses usuários permaneçam nessa etapa e redireciona usuários já verificados para a home. Essa composição evita redirecionamentos prematuros e loops.
+`ProtectedRouteGuard` trata somente a presença da sessão: durante `loading`, exibe o fallback acessível compartilhado; sem usuário autenticado, redireciona para `/entrar` e preserva `pathname`, query e hash em `location.state`. Dentro dele, `VerifiedEmailGuard` redireciona usuários com `emailVerified: false` das rotas autenticadas normais para `/verificar-email`, mantendo esse destino. `EmailVerificationRouteGuard` permite que esses usuários permaneçam nessa etapa, envia visitantes a `/entrar` e, após a confirmação real no Auth, restaura o destino ou usa `/`. Essa composição evita redirecionamentos prematuros e loops.
+
+`PublicOnlyGuard` protege `/entrar`, `/cadastro` e `/recuperar-senha`. Visitantes podem renderizá-las; usuários autenticados não verificados seguem para `/verificar-email`; usuários verificados seguem ao destino interno preservado ou à home autenticada `/`. Os paths ficam centralizados em `src/routes/paths.ts`, e helpers puros validam defensivamente o estado. URLs absolutas, protocol-relative, protocolos arbitrários e estados malformados são rejeitados, impedindo open redirect.
+
+| Estado da sessão               | Rotas públicas de autenticação | `/verificar-email` | Rotas autenticadas verificadas |
+| ------------------------------ | ------------------------------ | ------------------ | ------------------------------ |
+| Carregando                     | Loading compartilhado          | Loading            | Loading                        |
+| Não autenticado                | Permitidas                     | `/entrar`          | `/entrar`                      |
+| Autenticado, não verificado    | `/verificar-email`             | Permitida          | `/verificar-email`             |
+| Autenticado, e-mail verificado | Home ou destino preservado     | Home ou destino    | Permitidas                     |
+
+Os guards dependem exclusivamente do estado publicado pelo `AuthProvider`; não importam Firebase, consultam Firestore nem aguardam o `UserProfileProvider`. As rotas verificadas atuais são `/`, `/conta/alterar-senha`, `/conta/excluir` e a página 404 autenticada. A cobertura combina testes puros do estado de redirect, testes de composição dos guards, fluxos de páginas e Playwright com repository E2E determinístico. Grupos, papéis, claims e autorização de domínio continuam fora desta etapa.
 
 Na etapa de verificação, após um envio bem-sucedido, o controle fica indisponível por 60 segundos para reduzir reenvios acidentais. A ação “Já verifiquei meu e-mail” chama `reload` no usuário atual e publica o novo `AuthenticatedUser`. Se o Firebase ainda informar `emailVerified: false`, a página orienta a concluir o link e tentar novamente; quando o valor passa a `true`, o guard libera a home.
 
@@ -24,13 +35,13 @@ A rota `/conta/alterar-senha` fica dentro de `ProtectedRouteGuard` e `VerifiedEm
 
 Senha atual incorreta, credencial inválida, sessão recente exigida, senha fraca, excesso de tentativas, rede e falhas desconhecidas são convertidas em mensagens de domínio. Se a reautenticação falhar, a atualização não é chamada. Após sucesso, os três campos são limpos, a confirmação permanece na mesma página e a sessão autenticada é preservada, sem refresh, logout ou navegação automática. As senhas existem somente no estado local do React Hook Form enquanto a página está montada; não são persistidas nem registradas.
 
-A rota `/conta/excluir` exige sessão autenticada, e-mail disponível e verificado. O usuário informa a senha atual e confirma explicitamente a permanência da ação. O repository reautentica e somente depois chama `deleteUser`. Após o sucesso, a mutation executa o logout existente; `onAuthStateChanged` publica a ausência de usuário e os guards redirecionam para `/login`. Em falha, os campos permanecem apenas no formulário para nova tentativa, sem navegação.
+A rota `/conta/excluir` exige sessão autenticada, e-mail disponível e verificado. O usuário informa a senha atual e confirma explicitamente a permanência da ação. O repository reautentica e somente depois chama `deleteUser`. Após o sucesso, a mutation executa o logout existente; `onAuthStateChanged` publica a ausência de usuário e os guards redirecionam para `/entrar`. Em falha, os campos permanecem apenas no formulário para nova tentativa, sem navegação.
 
 `SensitiveAction`, `SensitiveOperation` e `ReauthenticationRequirement` centralizam o contrato das operações sensíveis de alteração de senha e exclusão. A implementação atual exige apenas reautenticação por senha. Os contratos permitem acrescentar uma segunda etapa futuramente, mas MFA, TOTP, SMS e APIs multifator não estão implementados.
 
 Erros técnicos são convertidos em códigos de domínio e mensagens sanitizadas em português. O login usa mensagem genérica para credenciais inválidas e a interface não mostra códigos, stacks ou detalhes internos.
 
-O logout percorre repository → service → hook de mutation. Em caso de sucesso, `onAuthStateChanged` publica a sessão sem usuário e o `ProtectedRouteGuard` redireciona para `/login`; o botão não navega manualmente. Em caso de falha, a sessão e a rota protegida são preservadas, o botão é reabilitado e uma mensagem sanitizada é anunciada.
+O logout percorre repository → service → hook de mutation. Em caso de sucesso, `onAuthStateChanged` publica a sessão sem usuário e o `ProtectedRouteGuard` redireciona para `/entrar`; o botão não navega manualmente. Em caso de falha, a sessão e a rota protegida são preservadas, o botão é reabilitado e uma mensagem sanitizada é anunciada.
 
 A rota pública `/recuperar-senha`, protegida por `PublicOnlyGuard`, recebe somente um e-mail normalizado e chama `sendPasswordResetEmail(auth, email)` sem `ActionCodeSettings`. O sucesso substitui o formulário por uma confirmação neutra, sem mostrar o e-mail e sem redirecionamento. Respostas de usuário inexistente também são tratadas como sucesso neutro para impedir enumeração de contas. Falhas de formato, limite de tentativas, rede e erros desconhecidos usam mensagens sanitizadas.
 

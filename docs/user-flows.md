@@ -20,6 +20,13 @@ Também são previstos cadastro/login com Google, recuperação e atualização 
 3. Sessão carrega perfil e grupo padrão/ativo.
 4. Perfil incompleto segue ao onboarding; os demais seguem ao dashboard.
 
+Ao abrir uma rota protegida sem sessão, a aplicação aguarda a resolução do Auth e
+redireciona para `/entrar`, preservando internamente pathname, query e hash. Após
+o login, usuários verificados retornam a esse destino; usuários não verificados
+seguem para `/verificar-email` sem perder o destino, que é restaurado após a
+confirmação real. Destinos externos ou malformados são descartados e usam `/`.
+O carregamento e o erro do documento básico do usuário não bloqueiam as rotas.
+
 ### Verificação de e-mail
 
 1. Enquanto `emailVerified` for falso, os guards direcionam o usuário autenticado à etapa própria `/verificar-email`.

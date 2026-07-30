@@ -1,9 +1,8 @@
-import { Navigate, Outlet } from 'react-router-dom'
-
-import { useLocation } from 'react-router-dom'
+import { Navigate, Outlet, useLocation } from 'react-router-dom'
 
 import { useAuth } from '../../features/auth/hooks/useAuth'
 import { routePaths } from '../paths'
+import { createInternalDestination } from '../authRedirect'
 import { RouteGuardFallback } from './RouteGuardFallback'
 
 export function ProtectedRouteGuard() {
@@ -18,7 +17,7 @@ export function ProtectedRouteGuard() {
     return (
       <Navigate
         replace
-        state={{ from: location.pathname }}
+        state={{ from: createInternalDestination(location) }}
         to={routePaths.login}
       />
     )

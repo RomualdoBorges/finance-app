@@ -38,7 +38,7 @@ function renderFlow(fail = false) {
       <AuthProvider service={new AuthService(repository)}>
         <MemoryRouter initialEntries={['/']}>
           <Routes>
-            <Route path="/login" element={<h1>Login</h1>} />
+            <Route path="/entrar" element={<h1>Login</h1>} />
             <Route element={<ProtectedRouteGuard />}>
               <Route
                 path="/"
