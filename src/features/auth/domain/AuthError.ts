@@ -8,6 +8,8 @@ export type AuthErrorCode =
   | 'network-unavailable'
   | 'sign-out-failed'
   | 'password-reset-failed'
+  | 'email-verification-failed'
+  | 'user-not-authenticated'
   | 'unknown'
 
 const authErrorMessages: Record<AuthErrorCode, string> = {
@@ -23,6 +25,10 @@ const authErrorMessages: Record<AuthErrorCode, string> = {
   'sign-out-failed': 'Não foi possível sair da conta. Tente novamente.',
   'password-reset-failed':
     'Não foi possível solicitar a recuperação de senha. Tente novamente.',
+  'email-verification-failed':
+    'Não foi possível enviar o e-mail de verificação. Tente novamente.',
+  'user-not-authenticated':
+    'Sua sessão não está disponível. Entre novamente para continuar.',
   unknown: 'Não foi possível concluir a autenticação. Tente novamente.',
 }
 

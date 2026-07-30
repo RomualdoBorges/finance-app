@@ -131,9 +131,7 @@ describe('páginas de autenticação', () => {
     expect(await screen.findByRole('status')).toHaveTextContent(
       'Se existir uma conta para este e-mail',
     )
-    expect(
-      page.repository.sendPasswordResetEmail.mock.calls,
-    ).toHaveLength(1)
+    expect(page.repository.sendPasswordResetEmail.mock.calls).toHaveLength(1)
     expect(
       screen.queryByRole('button', { name: 'Enviar instruções' }),
     ).not.toBeInTheDocument()
@@ -213,6 +211,7 @@ describe('páginas de autenticação', () => {
         name: 'Página inicial protegida',
       }),
     ).toBeInTheDocument()
+    expect(page.repository.sendVerificationEmail.mock.calls).toHaveLength(0)
   })
 
   it('exibe erro de autenticação sanitizado', async () => {

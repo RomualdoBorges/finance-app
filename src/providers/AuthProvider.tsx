@@ -37,8 +37,13 @@ export function AuthProvider({ children, service }: AuthProviderProps) {
       signInWithEmailAndPassword: (email, password) =>
         service.signInWithEmailAndPassword(email, password),
       signOut: () => service.signOut(),
-      sendPasswordResetEmail: (email) =>
-        service.sendPasswordResetEmail(email),
+      sendPasswordResetEmail: (email) => service.sendPasswordResetEmail(email),
+      sendVerificationEmail: () => service.sendVerificationEmail(),
+      reloadAuthenticatedUser: async () => {
+        const refreshedUser = await service.reloadAuthenticatedUser()
+        setUser(refreshedUser)
+        return refreshedUser
+      },
     }),
     [service, status, user],
   )

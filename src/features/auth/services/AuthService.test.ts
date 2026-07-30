@@ -4,6 +4,25 @@ import { createAuthRepositoryMock } from '../../../test/mocks/repositories/authR
 import { AuthService } from './AuthService'
 
 describe('AuthService', () => {
+  it('cadastra sem solicitar o envio da verificação', async () => {
+    const repository = createAuthRepositoryMock()
+    repository.registerWithEmailAndPassword.mockResolvedValue({
+      uid: 'user-1',
+      email: 'pessoa@example.com',
+      displayName: null,
+      photoURL: null,
+      emailVerified: false,
+    })
+    const service = new AuthService(repository)
+
+    await service.registerWithEmailAndPassword('pessoa@example.com', 'segredo')
+
+    expect(repository.registerWithEmailAndPassword.mock.calls).toEqual([
+      ['pessoa@example.com', 'segredo'],
+    ])
+    expect(repository.sendVerificationEmail.mock.calls).toHaveLength(0)
+  })
+
   it('delega o logout ao repository e resolve sem retorno', async () => {
     const repository = createAuthRepositoryMock()
     repository.signOut.mockResolvedValue(undefined)
@@ -24,5 +43,25 @@ describe('AuthService', () => {
     expect(repository.sendPasswordResetEmail.mock.calls).toEqual([
       ['pessoa@example.com'],
     ])
+  })
+
+  it('delega envio e atualização da verificação ao repository', async () => {
+    const repository = createAuthRepositoryMock()
+    repository.sendVerificationEmail.mockResolvedValue(undefined)
+    repository.reloadAuthenticatedUser.mockResolvedValue({
+      uid: 'user-1',
+      email: 'pessoa@example.com',
+      displayName: null,
+      photoURL: null,
+      emailVerified: true,
+    })
+    const service = new AuthService(repository)
+
+    await expect(service.sendVerificationEmail()).resolves.toBeUndefined()
+    await expect(service.reloadAuthenticatedUser()).resolves.toMatchObject({
+      emailVerified: true,
+    })
+    expect(repository.sendVerificationEmail.mock.calls).toHaveLength(1)
+    expect(repository.reloadAuthenticatedUser.mock.calls).toHaveLength(1)
   })
 })

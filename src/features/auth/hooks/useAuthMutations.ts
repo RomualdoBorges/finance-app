@@ -49,3 +49,21 @@ export function useSendPasswordResetEmail() {
     retry: false,
   })
 }
+
+export function useSendVerificationEmail() {
+  const { sendVerificationEmail } = useAuth()
+
+  return useMutation({
+    mutationFn: sendVerificationEmail,
+    retry: false,
+  })
+}
+
+export function useReloadAuthenticatedUser() {
+  const { reloadAuthenticatedUser } = useAuth()
+
+  return useMutation({
+    mutationFn: reloadAuthenticatedUser,
+    retry: false,
+  })
+}

@@ -26,8 +26,10 @@ function renderButton(signOut: AuthContextValue['signOut']) {
         user: authenticatedUser,
         registerWithEmailAndPassword: vi.fn(),
         signInWithEmailAndPassword: vi.fn(),
-      signOut,
-      sendPasswordResetEmail: vi.fn(),
+        signOut,
+        sendPasswordResetEmail: vi.fn(),
+        sendVerificationEmail: vi.fn(),
+        reloadAuthenticatedUser: vi.fn(),
       }}
     >
       <SignOutButton />

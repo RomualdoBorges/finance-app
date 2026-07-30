@@ -15,6 +15,10 @@ export interface AuthRepository {
 
   sendPasswordResetEmail(email: string): Promise<void>
 
+  sendVerificationEmail(): Promise<void>
+
+  reloadAuthenticatedUser(): Promise<AuthenticatedUser>
+
   subscribeToAuthState(
     listener: (user: AuthenticatedUser | null) => void,
   ): () => void

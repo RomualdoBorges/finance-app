@@ -8,8 +8,15 @@ import { createAuthRepositoryMock } from '../test/mocks/repositories/authReposit
 import { AuthProvider } from './AuthProvider'
 
 function SessionView() {
-  const { status, user } = useAuth()
-  return <p>{`${status}:${user?.uid ?? 'sem-usuario'}`}</p>
+  const { reloadAuthenticatedUser, status, user } = useAuth()
+  return (
+    <>
+      <p>{`${status}:${user?.uid ?? 'sem-usuario'}:${String(user?.emailVerified ?? false)}`}</p>
+      <button onClick={() => void reloadAuthenticatedUser()} type="button">
+        Atualizar
+      </button>
+    </>
+  )
 }
 
 function renderProvider() {
@@ -39,7 +46,7 @@ function renderProvider() {
 describe('AuthProvider', () => {
   it('inicia em loading', () => {
     renderProvider()
-    expect(screen.getByText('loading:sem-usuario')).toBeInTheDocument()
+    expect(screen.getByText('loading:sem-usuario:false')).toBeInTheDocument()
   })
 
   it('representa usuário autenticado', () => {
@@ -51,13 +58,15 @@ describe('AuthProvider', () => {
       photoURL: null,
       emailVerified: false,
     })
-    expect(screen.getByText('authenticated:user-1')).toBeInTheDocument()
+    expect(screen.getByText('authenticated:user-1:false')).toBeInTheDocument()
   })
 
   it('representa usuário não autenticado', () => {
     const provider = renderProvider()
     provider.emit(null)
-    expect(screen.getByText('unauthenticated:sem-usuario')).toBeInTheDocument()
+    expect(
+      screen.getByText('unauthenticated:sem-usuario:false'),
+    ).toBeInTheDocument()
   })
 
   it('assina uma vez e remove a assinatura ao desmontar', () => {
@@ -65,5 +74,29 @@ describe('AuthProvider', () => {
     expect(provider.repository.subscribeToAuthState.mock.calls).toHaveLength(1)
     provider.unmount()
     expect(provider.unsubscribe).toHaveBeenCalledOnce()
+  })
+
+  it('publica o usuário recarregado manualmente', async () => {
+    const provider = renderProvider()
+    provider.emit({
+      uid: 'user-1',
+      email: null,
+      displayName: null,
+      photoURL: null,
+      emailVerified: false,
+    })
+    provider.repository.reloadAuthenticatedUser.mockResolvedValue({
+      uid: 'user-1',
+      email: null,
+      displayName: null,
+      photoURL: null,
+      emailVerified: true,
+    })
+
+    screen.getByRole('button', { name: 'Atualizar' }).click()
+
+    expect(
+      await screen.findByText('authenticated:user-1:true'),
+    ).toBeInTheDocument()
   })
 })

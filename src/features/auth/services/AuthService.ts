@@ -30,6 +30,14 @@ export class AuthService {
     return this.repository.sendPasswordResetEmail(email)
   }
 
+  sendVerificationEmail(): Promise<void> {
+    return this.repository.sendVerificationEmail()
+  }
+
+  reloadAuthenticatedUser(): Promise<AuthenticatedUser> {
+    return this.repository.reloadAuthenticatedUser()
+  }
+
   subscribeToAuthState(
     listener: (user: AuthenticatedUser | null) => void,
   ): () => void {

@@ -45,7 +45,7 @@ test('solicita recuperação de senha sem revelar a existência da conta', async
 })
 
 test('encerra a sessão e remove o conteúdo protegido', async ({ page }) => {
-  await page.goto('/?e2e-authenticated')
+  await page.goto('/?e2e-authenticated&e2e-email-verified')
 
   await expect(
     page.getByRole('heading', {
@@ -65,4 +65,34 @@ test('encerra a sessão e remove o conteúdo protegido', async ({ page }) => {
       name: 'Fundação da aplicação configurada',
     }),
   ).not.toBeVisible()
+})
+
+test('reenvia e atualiza manualmente a verificação de e-mail', async ({
+  page,
+}) => {
+  await page.goto('/verificar-email?e2e-authenticated')
+
+  await expect(
+    page.getByRole('heading', { level: 1, name: 'Verifique seu e-mail' }),
+  ).toBeVisible()
+  await expect(page.getByText('pessoa@example.com')).toBeVisible()
+
+  await page
+    .getByRole('button', { name: 'Enviar e-mail de verificação' })
+    .click()
+  await expect(page.getByRole('status')).toContainText(
+    'E-mail de verificação enviado.',
+  )
+  await expect(
+    page.getByRole('button', { name: 'Reenviar em 60s' }),
+  ).toBeDisabled()
+
+  await page.getByRole('button', { name: 'Já verifiquei meu e-mail' }).click()
+  await expect(
+    page.getByRole('heading', {
+      level: 1,
+      name: 'Fundação da aplicação configurada',
+    }),
+  ).toBeVisible()
+  await expect(page).toHaveURL(/\/$/)
 })

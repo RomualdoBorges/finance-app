@@ -1,10 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import {
-  loginSchema,
-  passwordResetSchema,
-  registerSchema,
-} from './authSchemas'
+import { loginSchema, passwordResetSchema, registerSchema } from './authSchemas'
 
 describe('schemas de autenticação', () => {
   it('aceita um login válido', () => {

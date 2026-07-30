@@ -1,6 +1,8 @@
 import {
   createUserWithEmailAndPassword,
   onAuthStateChanged,
+  reload,
+  sendEmailVerification,
   sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signOut,
@@ -26,6 +28,8 @@ type FirebaseAuthOperations = {
   ) => Promise<UserCredential>
   readonly signOut: (auth: Auth) => Promise<void>
   readonly sendPasswordResetEmail: (auth: Auth, email: string) => Promise<void>
+  readonly sendEmailVerification: (user: User) => Promise<void>
+  readonly reload: (user: User) => Promise<void>
   readonly subscribe: (
     auth: Auth,
     listener: (user: User | null) => void,
@@ -37,6 +41,8 @@ const defaultOperations: FirebaseAuthOperations = {
   signIn: signInWithEmailAndPassword,
   signOut,
   sendPasswordResetEmail,
+  sendEmailVerification,
+  reload,
   subscribe: onAuthStateChanged,
 }
 
@@ -148,6 +154,50 @@ export class FirebaseAuthRepository implements AuthRepository {
       }
 
       throw mappedError
+    }
+  }
+
+  async sendVerificationEmail(): Promise<void> {
+    const user = this.auth.currentUser
+
+    if (user === null) {
+      throw new AuthError('user-not-authenticated')
+    }
+
+    try {
+      await this.operations.sendEmailVerification(user)
+    } catch (error) {
+      const mappedError = mapFirebaseAuthError(error)
+
+      if (
+        mappedError.code === 'too-many-requests' ||
+        mappedError.code === 'network-unavailable'
+      ) {
+        throw mappedError
+      }
+
+      throw new AuthError('email-verification-failed')
+    }
+  }
+
+  async reloadAuthenticatedUser(): Promise<AuthenticatedUser> {
+    const user = this.auth.currentUser
+
+    if (user === null) {
+      throw new AuthError('user-not-authenticated')
+    }
+
+    try {
+      await this.operations.reload(user)
+      return mapFirebaseUser(user)
+    } catch (error) {
+      const mappedError = mapFirebaseAuthError(error)
+
+      if (mappedError.code === 'network-unavailable') {
+        throw mappedError
+      }
+
+      throw new AuthError('email-verification-failed')
     }
   }
 

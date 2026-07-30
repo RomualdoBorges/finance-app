@@ -4,6 +4,7 @@ import type { AuthRepository } from './AuthRepository'
 
 export class E2EAuthRepository implements AuthRepository {
   private listener: ((user: AuthenticatedUser | null) => void) | undefined
+  private user: AuthenticatedUser | null = null
 
   registerWithEmailAndPassword(): Promise<AuthenticatedUser> {
     return Promise.reject(new AuthError('unknown'))
@@ -22,6 +23,19 @@ export class E2EAuthRepository implements AuthRepository {
     return Promise.resolve()
   }
 
+  sendVerificationEmail(): Promise<void> {
+    return Promise.resolve()
+  }
+
+  reloadAuthenticatedUser(): Promise<AuthenticatedUser> {
+    if (this.user === null) {
+      return Promise.reject(new AuthError('user-not-authenticated'))
+    }
+
+    this.user = { ...this.user, emailVerified: true }
+    return Promise.resolve(this.user)
+  }
+
   subscribeToAuthState(
     listener: (user: AuthenticatedUser | null) => void,
   ): () => void {
@@ -29,17 +43,19 @@ export class E2EAuthRepository implements AuthRepository {
     const authenticated = new URLSearchParams(globalThis.location.search).has(
       'e2e-authenticated',
     )
-    listener(
-      authenticated
-        ? {
-            uid: 'e2e-user',
-            email: null,
-            displayName: null,
-            photoURL: null,
-            emailVerified: false,
-          }
-        : null,
+    const emailVerified = new URLSearchParams(globalThis.location.search).has(
+      'e2e-email-verified',
     )
+    this.user = authenticated
+      ? {
+          uid: 'e2e-user',
+          email: 'pessoa@example.com',
+          displayName: null,
+          photoURL: null,
+          emailVerified,
+        }
+      : null
+    listener(this.user)
     return () => {
       this.listener = undefined
     }

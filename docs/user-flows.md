@@ -8,9 +8,8 @@ Os fluxos do MVP e das fases futuras são separados para impedir implementação
 
 1. Usuário informa dados, e-mail e senha.
 2. Formulário valida os campos; Authentication cria a identidade.
-3. Aplicação envia verificação de e-mail.
-4. Perfil é criado sem senha, token ou credencial financeira.
-5. Usuário segue ao onboarding.
+3. Usuário autenticado segue obrigatoriamente à etapa de verificação.
+4. Nenhum perfil, senha, token ou credencial financeira é persistido no Firestore nesta etapa.
 
 Também são previstos cadastro/login com Google, recuperação e atualização de senha, logout, exclusão de usuário e MFA quando habilitado.
 
@@ -20,6 +19,14 @@ Também são previstos cadastro/login com Google, recuperação e atualização 
 2. Erros não revelam informações sensíveis.
 3. Sessão carrega perfil e grupo padrão/ativo.
 4. Perfil incompleto segue ao onboarding; os demais seguem ao dashboard.
+
+### Verificação de e-mail
+
+1. Enquanto `emailVerified` for falso, os guards direcionam o usuário autenticado à etapa própria `/verificar-email`.
+2. O usuário solicita explicitamente o envio da mensagem; um intervalo de 60 segundos impede reenvios repetidos pela interface.
+3. O cadastro e a autenticação não enviam a mensagem automaticamente.
+4. Depois de abrir o link recebido, o usuário solicita a atualização manual do estado.
+5. A aplicação recarrega o usuário do Authentication e segue normalmente quando `emailVerified` passa a verdadeiro.
 
 ### Onboarding e grupo individual
 

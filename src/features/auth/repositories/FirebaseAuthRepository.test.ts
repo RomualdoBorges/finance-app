@@ -25,11 +25,16 @@ function createRepository() {
     signIn: vi.fn().mockResolvedValue(credential),
     signOut: vi.fn().mockResolvedValue(undefined),
     sendPasswordResetEmail: vi.fn().mockResolvedValue(undefined),
+    sendEmailVerification: vi.fn().mockResolvedValue(undefined),
+    reload: vi.fn().mockResolvedValue(undefined),
     subscribe: vi.fn().mockReturnValue(unsubscribe),
   }
 
   return {
-    repository: new FirebaseAuthRepository({} as Auth, operations),
+    repository: new FirebaseAuthRepository(
+      { currentUser: firebaseUser } as Auth,
+      operations,
+    ),
     operations,
     unsubscribe,
   }
@@ -85,6 +90,7 @@ describe('FirebaseAuthRepository', () => {
       'pessoa@example.com',
       'segredo',
     )
+    expect(operations.sendEmailVerification.mock.calls).toHaveLength(0)
   })
 
   it('chama o login e retorna o modelo interno', async () => {
@@ -124,6 +130,37 @@ describe('FirebaseAuthRepository', () => {
       expect.anything(),
       'pessoa@example.com',
     )
+  })
+
+  it('reenvia a verificação para o usuário autenticado', async () => {
+    const { repository, operations } = createRepository()
+
+    await expect(repository.sendVerificationEmail()).resolves.toBeUndefined()
+    expect(operations.sendEmailVerification).toHaveBeenCalledWith(firebaseUser)
+  })
+
+  it('recarrega e mapeia o usuário autenticado', async () => {
+    const { repository, operations } = createRepository()
+
+    await expect(repository.reloadAuthenticatedUser()).resolves.toEqual(
+      mapFirebaseUser(firebaseUser),
+    )
+    expect(operations.reload).toHaveBeenCalledWith(firebaseUser)
+  })
+
+  it('não executa verificação sem uma sessão autenticada', async () => {
+    const { operations } = createRepository()
+    const repository = new FirebaseAuthRepository(
+      { currentUser: null } as Auth,
+      operations,
+    )
+
+    await expect(repository.sendVerificationEmail()).rejects.toMatchObject({
+      code: 'user-not-authenticated',
+    })
+    await expect(repository.reloadAuthenticatedUser()).rejects.toMatchObject({
+      code: 'user-not-authenticated',
+    })
   })
 
   it('não revela quando o usuário não existe', async () => {
