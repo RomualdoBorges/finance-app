@@ -5,6 +5,7 @@ import { LoginPage } from '../features/auth/pages/LoginPage'
 import { RegisterPage } from '../features/auth/pages/RegisterPage'
 import { PasswordResetPage } from '../features/auth/pages/PasswordResetPage'
 import { EmailVerificationPage } from '../features/auth/pages/EmailVerificationPage'
+import { UpdatePasswordPage } from '../features/auth/pages/UpdatePasswordPage'
 import { NotFoundPage } from '../features/not-found/pages/NotFoundPage'
 import { AppLayout } from '../layouts/AppLayout'
 import { AuthLayout } from '../layouts/AuthLayout'
@@ -47,6 +48,10 @@ export const router = createBrowserRouter([
             element: <VerifiedEmailGuard />,
             children: [
               { path: routePaths.home, element: <HomePage /> },
+              {
+                path: routePaths.updatePassword,
+                element: <UpdatePasswordPage />,
+              },
               { path: '*', element: <NotFoundPage /> },
             ],
           },

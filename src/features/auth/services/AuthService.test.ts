@@ -64,4 +64,17 @@ describe('AuthService', () => {
     expect(repository.sendVerificationEmail.mock.calls).toHaveLength(1)
     expect(repository.reloadAuthenticatedUser.mock.calls).toHaveLength(1)
   })
+
+  it('delega a atualização de senha ao repository', async () => {
+    const repository = createAuthRepositoryMock()
+    repository.updatePassword.mockResolvedValue(undefined)
+    const service = new AuthService(repository)
+    const input = {
+      currentPassword: 'senha-atual',
+      newPassword: 'senha-nova',
+    }
+
+    await expect(service.updatePassword(input)).resolves.toBeUndefined()
+    expect(repository.updatePassword.mock.calls).toEqual([[input]])
+  })
 })

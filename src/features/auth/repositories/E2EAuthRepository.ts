@@ -36,6 +36,23 @@ export class E2EAuthRepository implements AuthRepository {
     return Promise.resolve(this.user)
   }
 
+  updatePassword(input: {
+    readonly currentPassword: string
+    readonly newPassword: string
+  }): Promise<void> {
+    if (this.user === null) {
+      return Promise.reject(
+        new AuthError('password-update-user-not-authenticated'),
+      )
+    }
+
+    if (input.currentPassword !== 'senha-atual-valida') {
+      return Promise.reject(new AuthError('incorrect-current-password'))
+    }
+
+    return Promise.resolve()
+  }
+
   subscribeToAuthState(
     listener: (user: AuthenticatedUser | null) => void,
   ): () => void {

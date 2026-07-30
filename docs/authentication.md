@@ -1,10 +1,10 @@
 # Autenticação por e-mail e senha
 
-Esta etapa implementa cadastro, login, logout, solicitação de recuperação de senha, verificação de e-mail e observação da sessão com Firebase Authentication. O login com Google foi removido do escopo do projeto.
+Esta etapa implementa cadastro, login, logout, solicitação de recuperação de senha, verificação de e-mail, atualização de senha e observação da sessão com Firebase Authentication. O login com Google foi removido do escopo do projeto.
 
 ## Arquitetura
 
-A camada visual usa hooks e não importa o Firebase. `FirebaseAuthRepository` é a única implementação da feature que chama o SDK modular (`createUserWithEmailAndPassword`, `signInWithEmailAndPassword`, `sendPasswordResetEmail`, `sendEmailVerification`, `reload`, `signOut` e `onAuthStateChanged`). `AuthService` mantém o contrato disponível para a aplicação.
+A camada visual usa hooks e não importa o Firebase. `FirebaseAuthRepository` é a única implementação da feature que chama o SDK modular (`createUserWithEmailAndPassword`, `signInWithEmailAndPassword`, `sendPasswordResetEmail`, `sendEmailVerification`, `reload`, `EmailAuthProvider.credential`, `reauthenticateWithCredential`, `updatePassword`, `signOut` e `onAuthStateChanged`). `AuthService` mantém o contrato disponível para a aplicação.
 
 O Firebase `User` é convertido para o modelo interno `AuthenticatedUser`, que contém somente `uid`, `email`, `displayName`, `photoURL` e `emailVerified`. Credenciais completas, tokens e senha não são expostos.
 
@@ -20,6 +20,10 @@ O envio ocorre somente quando o usuário autenticado clica em “Enviar e-mail d
 
 Na etapa de verificação, após um envio bem-sucedido, o controle fica indisponível por 60 segundos para reduzir reenvios acidentais. A ação “Já verifiquei meu e-mail” chama `reload` no usuário atual e publica o novo `AuthenticatedUser`. Se o Firebase ainda informar `emailVerified: false`, a página orienta a concluir o link e tentar novamente; quando o valor passa a `true`, o guard libera a home.
 
+A rota `/conta/alterar-senha` fica dentro de `ProtectedRouteGuard` e `VerifiedEmailGuard` e só oferece o formulário quando o usuário autenticado também possui e-mail. O formulário exige senha atual, nova senha e confirmação. O fluxo segue repository → service → hook: o repository cria a credencial de e-mail e senha atual, executa `reauthenticateWithCredential` e somente após sucesso chama `updatePassword`.
+
+Senha atual incorreta, credencial inválida, sessão recente exigida, senha fraca, excesso de tentativas, rede e falhas desconhecidas são convertidas em mensagens de domínio. Se a reautenticação falhar, a atualização não é chamada. Após sucesso, os três campos são limpos, a confirmação permanece na mesma página e a sessão autenticada é preservada, sem refresh, logout ou navegação automática. As senhas existem somente no estado local do React Hook Form enquanto a página está montada; não são persistidas nem registradas.
+
 Erros técnicos são convertidos em códigos de domínio e mensagens sanitizadas em português. O login usa mensagem genérica para credenciais inválidas e a interface não mostra códigos, stacks ou detalhes internos.
 
 O logout percorre repository → service → hook de mutation. Em caso de sucesso, `onAuthStateChanged` publica a sessão sem usuário e o `ProtectedRouteGuard` redireciona para `/login`; o botão não navega manualmente. Em caso de falha, a sessão e a rota protegida são preservadas, o botão é reabilitado e uma mensagem sanitizada é anunciada.
@@ -30,10 +34,10 @@ A rota pública `/recuperar-senha`, protegida por `PublicOnlyGuard`, recebe some
 
 A inicialização existente respeita `VITE_FIREBASE_USE_EMULATORS`. Quando a flag está ativa, o cliente Auth já inicializado é conectado ao host e à porta validados no ambiente. Não há segunda inicialização.
 
-Testes unitários e de integração usam mocks do repository e não acessam rede nem Firebase real. No build E2E, o repository isolado pode iniciar uma sessão fictícia pelo marcador `e2e-authenticated` na URL, simular a atualização da verificação e emitir a sessão nula ao sair, sem credenciais ou rede.
+Testes unitários e de integração usam mocks do repository e não acessam rede nem Firebase real. No build E2E, o repository isolado pode iniciar uma sessão fictícia pelo marcador `e2e-authenticated` na URL, simular a atualização da verificação, aceitar uma senha atual fictícia controlada para a troca de senha e emitir a sessão nula ao sair, sem credenciais ou rede. A configuração existente continua direcionando o SDK real ao Auth Emulator quando habilitada; nenhuma segunda conexão é criada.
 
 ## Segurança e limitações
 
 Senhas permanecem somente no estado do React Hook Form e não são persistidas em URL, storage, Zustand ou logs. Nenhum token é exposto e nenhum acesso ao Firestore foi adicionado.
 
-Continuam pendentes: atualização de senha, confirmação de redefinição por código, exclusão de usuário, MFA, documento do usuário, grupos e grupo ativo/padrão. Nenhuma regra de negócio financeira, Firestore Rule ou autorização por papel foi adicionada nesta etapa.
+Continuam pendentes: confirmação de redefinição por código, exclusão de usuário, MFA, documento do usuário, grupos e grupo ativo/padrão. Nenhuma regra de negócio financeira, Firestore Rule ou autorização por papel foi adicionada nesta etapa.

@@ -31,6 +31,7 @@ function contextValue(
     sendPasswordResetEmail: vi.fn(),
     sendVerificationEmail: vi.fn(),
     reloadAuthenticatedUser: vi.fn(),
+    updatePassword: vi.fn(),
   }
 }
 
@@ -55,6 +56,10 @@ function renderGuards(
             </Route>
             <Route element={<VerifiedEmailGuard />}>
               <Route path="/" element={<h1>Protegida</h1>} />
+              <Route
+                path="/conta/alterar-senha"
+                element={<h1>Alterar senha</h1>}
+              />
             </Route>
           </Route>
         </Routes>
@@ -107,7 +112,26 @@ describe('guards de autenticação', () => {
     ).toBeInTheDocument()
   })
 
-  it.each(['/login', '/', '/verificar-email'])(
+  it('redireciona usuário não autenticado da atualização de senha', () => {
+    renderGuards('unauthenticated', '/conta/alterar-senha')
+    expect(screen.getByRole('heading', { name: 'Login' })).toBeInTheDocument()
+  })
+
+  it('redireciona usuário não verificado da atualização de senha', () => {
+    renderGuards('authenticated', '/conta/alterar-senha')
+    expect(
+      screen.getByRole('heading', { name: 'Verificar e-mail' }),
+    ).toBeInTheDocument()
+  })
+
+  it('permite atualização de senha para usuário verificado', () => {
+    renderGuards('authenticated', '/conta/alterar-senha', true)
+    expect(
+      screen.getByRole('heading', { name: 'Alterar senha' }),
+    ).toBeInTheDocument()
+  })
+
+  it.each(['/login', '/', '/verificar-email', '/conta/alterar-senha'])(
     'aguarda o fim do loading em %s',
     (entry) => {
       renderGuards('loading', entry)

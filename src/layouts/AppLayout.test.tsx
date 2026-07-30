@@ -28,6 +28,7 @@ function renderLayout() {
         sendVerificationEmail: () => Promise.resolve(),
         reloadAuthenticatedUser: () =>
           Promise.reject(new Error('não utilizado')),
+        updatePassword: () => Promise.reject(new Error('não utilizado')),
       }}
     >
       <Routes>
@@ -50,6 +51,10 @@ describe('AppLayout', () => {
     expect(screen.getByRole('link', { name: 'Início' })).toHaveAttribute(
       'aria-current',
       'page',
+    )
+    expect(screen.getByRole('link', { name: 'Alterar senha' })).toHaveAttribute(
+      'href',
+      '/conta/alterar-senha',
     )
     expect(
       screen.getByRole('heading', { name: 'Conteúdo de teste' }),

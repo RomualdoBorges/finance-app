@@ -28,6 +28,15 @@ Também são previstos cadastro/login com Google, recuperação e atualização 
 4. Depois de abrir o link recebido, o usuário solicita a atualização manual do estado.
 5. A aplicação recarrega o usuário do Authentication e segue normalmente quando `emailVerified` passa a verdadeiro.
 
+### Atualização de senha
+
+1. Usuário autenticado, com e-mail disponível e verificado, acessa “Alterar senha”.
+2. Informa a senha atual, a nova senha e a confirmação da nova senha.
+3. Authentication reautentica o usuário com a credencial de e-mail e senha atual.
+4. Somente após a reautenticação, Authentication atualiza a senha.
+5. Em caso de sucesso, o formulário é limpo e a sessão permanece autenticada na mesma página.
+6. Senha atual incorreta ou outra falha segura mantém os campos somente no estado local para correção e nova tentativa.
+
 ### Onboarding e grupo individual
 
 1. Backend verifica se o onboarding já foi processado.

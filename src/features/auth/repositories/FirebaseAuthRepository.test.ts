@@ -1,4 +1,4 @@
-import type { Auth, User, UserCredential } from 'firebase/auth'
+import type { Auth, AuthCredential, User, UserCredential } from 'firebase/auth'
 import { describe, expect, it, vi } from 'vitest'
 
 import { AuthError } from '../domain/AuthError'
@@ -17,6 +17,36 @@ const firebaseUser = {
 } as User
 
 const credential = { user: firebaseUser } as UserCredential
+const emailCredential = { providerId: 'password' } as AuthCredential
+const reauthenticationErrorCases: ReadonlyArray<
+  readonly [string, string, string]
+> = [
+  [
+    'auth/invalid-credential',
+    'current-credential-invalid',
+    'Não foi possível confirmar sua senha atual.',
+  ],
+  [
+    'auth/requires-recent-login',
+    'recent-login-required',
+    'Sua sessão precisa ser confirmada novamente. Informe sua senha atual e tente outra vez.',
+  ],
+  [
+    'auth/too-many-requests',
+    'too-many-requests',
+    'Muitas tentativas foram realizadas. Aguarde alguns minutos e tente novamente.',
+  ],
+  [
+    'auth/network-request-failed',
+    'password-update-network-unavailable',
+    'Não foi possível atualizar a senha. Verifique sua conexão e tente novamente.',
+  ],
+  [
+    'auth/internal-error',
+    'password-update-failed',
+    'Não foi possível atualizar a senha. Tente novamente.',
+  ],
+]
 
 function createRepository() {
   const unsubscribe = vi.fn()
@@ -27,6 +57,9 @@ function createRepository() {
     sendPasswordResetEmail: vi.fn().mockResolvedValue(undefined),
     sendEmailVerification: vi.fn().mockResolvedValue(undefined),
     reload: vi.fn().mockResolvedValue(undefined),
+    createEmailCredential: vi.fn().mockReturnValue(emailCredential),
+    reauthenticate: vi.fn().mockResolvedValue(credential),
+    updatePassword: vi.fn().mockResolvedValue(undefined),
     subscribe: vi.fn().mockReturnValue(unsubscribe),
   }
 
@@ -203,4 +236,131 @@ describe('FirebaseAuthRepository', () => {
       message: 'Não foi possível sair da conta. Tente novamente.',
     })
   })
+
+  it('cria a credencial, reautentica e somente depois atualiza a senha', async () => {
+    const { repository, operations } = createRepository()
+
+    await expect(
+      repository.updatePassword({
+        currentPassword: 'senha-atual',
+        newPassword: 'senha-nova',
+      }),
+    ).resolves.toBeUndefined()
+
+    expect(operations.createEmailCredential).toHaveBeenCalledWith(
+      'pessoa@example.com',
+      'senha-atual',
+    )
+    expect(operations.reauthenticate).toHaveBeenCalledWith(
+      firebaseUser,
+      emailCredential,
+    )
+    expect(operations.updatePassword).toHaveBeenCalledWith(
+      firebaseUser,
+      'senha-nova',
+    )
+    expect(operations.reauthenticate.mock.invocationCallOrder[0]).toBeLessThan(
+      operations.updatePassword.mock.invocationCallOrder[0] ?? 0,
+    )
+  })
+
+  it('não atualiza a senha quando a reautenticação falha', async () => {
+    const { repository, operations } = createRepository()
+    operations.reauthenticate.mockRejectedValueOnce({
+      code: 'auth/wrong-password',
+      message: 'detalhes internos',
+    })
+
+    await expect(
+      repository.updatePassword({
+        currentPassword: 'incorreta',
+        newPassword: 'senha-nova',
+      }),
+    ).rejects.toMatchObject({
+      code: 'incorrect-current-password',
+      message: 'A senha atual está incorreta.',
+    })
+    expect(operations.updatePassword.mock.calls).toHaveLength(0)
+  })
+
+  it('rejeita sessão ausente e usuário sem e-mail com erros sanitizados', async () => {
+    const { operations } = createRepository()
+    const input = {
+      currentPassword: 'senha-atual',
+      newPassword: 'senha-nova',
+    }
+
+    await expect(
+      new FirebaseAuthRepository(
+        { currentUser: null } as Auth,
+        operations,
+      ).updatePassword(input),
+    ).rejects.toMatchObject({
+      code: 'password-update-user-not-authenticated',
+      message: 'Não foi possível identificar a sessão atual. Entre novamente.',
+    })
+
+    await expect(
+      new FirebaseAuthRepository(
+        { currentUser: { ...firebaseUser, email: null } } as Auth,
+        operations,
+      ).updatePassword(input),
+    ).rejects.toMatchObject({ code: 'user-email-unavailable' })
+  })
+
+  it.each(reauthenticationErrorCases)(
+    'sanitiza erro de reautenticação %s',
+    async (firebaseCode, domainCode, message) => {
+      const { repository, operations } = createRepository()
+      operations.reauthenticate.mockRejectedValueOnce({
+        code: firebaseCode,
+        message: 'credencial e token internos',
+      })
+
+      await expect(
+        repository.updatePassword({
+          currentPassword: 'senha-atual',
+          newPassword: 'senha-nova',
+        }),
+      ).rejects.toMatchObject({
+        code: domainCode,
+        message,
+      })
+      expect(operations.updatePassword.mock.calls).toHaveLength(0)
+    },
+  )
+
+  it.each([
+    [
+      'auth/weak-password',
+      'password-update-weak-password',
+      'A nova senha não atende aos requisitos de segurança.',
+    ],
+    [
+      'auth/network-request-failed',
+      'password-update-network-unavailable',
+      'Não foi possível atualizar a senha. Verifique sua conexão e tente novamente.',
+    ],
+    [
+      'auth/internal-error',
+      'password-update-failed',
+      'Não foi possível atualizar a senha. Tente novamente.',
+    ],
+  ])(
+    'sanitiza erro de atualização %s',
+    async (firebaseCode, domainCode, message) => {
+      const { repository, operations } = createRepository()
+      operations.updatePassword.mockRejectedValueOnce({
+        code: firebaseCode,
+        message: 'senha e stack internas',
+      })
+
+      await expect(
+        repository.updatePassword({
+          currentPassword: 'senha-atual',
+          newPassword: 'senha-nova',
+        }),
+      ).rejects.toMatchObject({ code: domainCode, message })
+    },
+  )
 })

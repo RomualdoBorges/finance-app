@@ -19,6 +19,11 @@ export interface AuthRepository {
 
   reloadAuthenticatedUser(): Promise<AuthenticatedUser>
 
+  updatePassword(input: {
+    readonly currentPassword: string
+    readonly newPassword: string
+  }): Promise<void>
+
   subscribeToAuthState(
     listener: (user: AuthenticatedUser | null) => void,
   ): () => void

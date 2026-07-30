@@ -44,6 +44,7 @@ export function AuthProvider({ children, service }: AuthProviderProps) {
         setUser(refreshedUser)
         return refreshedUser
       },
+      updatePassword: (input) => service.updatePassword(input),
     }),
     [service, status, user],
   )

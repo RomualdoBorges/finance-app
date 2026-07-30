@@ -67,3 +67,15 @@ export function useReloadAuthenticatedUser() {
     retry: false,
   })
 }
+
+export function useUpdatePassword() {
+  const { updatePassword } = useAuth()
+
+  return useMutation({
+    mutationFn: (input: {
+      readonly currentPassword: string
+      readonly newPassword: string
+    }) => updatePassword(input),
+    retry: false,
+  })
+}

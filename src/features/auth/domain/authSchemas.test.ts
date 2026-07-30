@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest'
 
-import { loginSchema, passwordResetSchema, registerSchema } from './authSchemas'
+import {
+  loginSchema,
+  passwordResetSchema,
+  registerSchema,
+  updatePasswordSchema,
+} from './authSchemas'
 
 describe('schemas de autenticação', () => {
   it('aceita um login válido', () => {
@@ -68,6 +73,68 @@ describe('schemas de autenticação', () => {
     expect(result.success).toBe(false)
     if (!result.success) {
       expect(result.error.issues[0]?.path).toEqual(['passwordConfirmation'])
+    }
+  })
+
+  it('aceita uma atualização de senha válida', () => {
+    expect(
+      updatePasswordSchema.safeParse({
+        currentPassword: 'senha-atual',
+        newPassword: 'senha-nova',
+        confirmNewPassword: 'senha-nova',
+      }).success,
+    ).toBe(true)
+  })
+
+  it.each([
+    [
+      {
+        currentPassword: '',
+        newPassword: 'senha-nova',
+        confirmNewPassword: 'senha-nova',
+      },
+      'Informe sua senha atual.',
+    ],
+    [
+      {
+        currentPassword: 'senha-atual',
+        newPassword: '',
+        confirmNewPassword: '',
+      },
+      'Informe a nova senha.',
+    ],
+    [
+      {
+        currentPassword: 'senha-atual',
+        newPassword: '12345',
+        confirmNewPassword: '12345',
+      },
+      'A nova senha deve ter pelo menos 6 caracteres.',
+    ],
+    [
+      {
+        currentPassword: 'senha-atual',
+        newPassword: 'senha-nova',
+        confirmNewPassword: 'diferente',
+      },
+      'A confirmação da senha não corresponde à nova senha.',
+    ],
+    [
+      {
+        currentPassword: 'senha-igual',
+        newPassword: 'senha-igual',
+        confirmNewPassword: 'senha-igual',
+      },
+      'A nova senha deve ser diferente da senha atual.',
+    ],
+  ])('rejeita atualização inválida: %s', (input, expectedMessage) => {
+    const result = updatePasswordSchema.safeParse(input)
+
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error.issues.map((issue) => issue.message)).toContain(
+        expectedMessage,
+      )
     }
   })
 })

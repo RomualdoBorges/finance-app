@@ -1,12 +1,16 @@
 import {
   createUserWithEmailAndPassword,
+  EmailAuthProvider,
   onAuthStateChanged,
   reload,
+  reauthenticateWithCredential,
   sendEmailVerification,
   sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signOut,
+  updatePassword,
   type Auth,
+  type AuthCredential,
   type User,
   type UserCredential,
 } from 'firebase/auth'
@@ -30,6 +34,15 @@ type FirebaseAuthOperations = {
   readonly sendPasswordResetEmail: (auth: Auth, email: string) => Promise<void>
   readonly sendEmailVerification: (user: User) => Promise<void>
   readonly reload: (user: User) => Promise<void>
+  readonly createEmailCredential: (
+    email: string,
+    password: string,
+  ) => AuthCredential
+  readonly reauthenticate: (
+    user: User,
+    credential: AuthCredential,
+  ) => Promise<UserCredential>
+  readonly updatePassword: (user: User, newPassword: string) => Promise<void>
   readonly subscribe: (
     auth: Auth,
     listener: (user: User | null) => void,
@@ -43,6 +56,10 @@ const defaultOperations: FirebaseAuthOperations = {
   sendPasswordResetEmail,
   sendEmailVerification,
   reload,
+  createEmailCredential: (email, password) =>
+    EmailAuthProvider.credential(email, password),
+  reauthenticate: reauthenticateWithCredential,
+  updatePassword,
   subscribe: onAuthStateChanged,
 }
 
@@ -85,6 +102,52 @@ export function mapFirebaseAuthError(error: unknown): AuthError {
       ? 'unknown'
       : (firebaseErrorCodes[firebaseCode] ?? 'unknown'),
   )
+}
+
+function getFirebaseErrorCode(error: unknown): string | undefined {
+  return typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    typeof error.code === 'string'
+    ? error.code
+    : undefined
+}
+
+function mapPasswordUpdateError(error: unknown): AuthError {
+  const code = getFirebaseErrorCode(error)
+
+  if (code === 'auth/wrong-password') {
+    return new AuthError('incorrect-current-password')
+  }
+
+  if (code === 'auth/invalid-credential') {
+    return new AuthError('current-credential-invalid')
+  }
+
+  if (
+    code === 'auth/invalid-login-credentials' ||
+    code === 'auth/user-mismatch'
+  ) {
+    return new AuthError('current-credential-invalid')
+  }
+
+  if (code === 'auth/requires-recent-login') {
+    return new AuthError('recent-login-required')
+  }
+
+  if (code === 'auth/weak-password') {
+    return new AuthError('password-update-weak-password')
+  }
+
+  if (code === 'auth/too-many-requests') {
+    return new AuthError('too-many-requests')
+  }
+
+  if (code === 'auth/network-request-failed') {
+    return new AuthError('password-update-network-unavailable')
+  }
+
+  return new AuthError('password-update-failed')
 }
 
 export class FirebaseAuthRepository implements AuthRepository {
@@ -198,6 +261,39 @@ export class FirebaseAuthRepository implements AuthRepository {
       }
 
       throw new AuthError('email-verification-failed')
+    }
+  }
+
+  async updatePassword(input: {
+    readonly currentPassword: string
+    readonly newPassword: string
+  }): Promise<void> {
+    const user = this.auth.currentUser
+
+    if (user === null) {
+      throw new AuthError('password-update-user-not-authenticated')
+    }
+
+    if (user.email === null) {
+      throw new AuthError('user-email-unavailable')
+    }
+
+    let credential: AuthCredential
+
+    try {
+      credential = this.operations.createEmailCredential(
+        user.email,
+        input.currentPassword,
+      )
+      await this.operations.reauthenticate(user, credential)
+    } catch (error) {
+      throw mapPasswordUpdateError(error)
+    }
+
+    try {
+      await this.operations.updatePassword(user, input.newPassword)
+    } catch (error) {
+      throw mapPasswordUpdateError(error)
     }
   }
 

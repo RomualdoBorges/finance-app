@@ -10,6 +10,14 @@ export type AuthErrorCode =
   | 'password-reset-failed'
   | 'email-verification-failed'
   | 'user-not-authenticated'
+  | 'user-email-unavailable'
+  | 'password-update-user-not-authenticated'
+  | 'incorrect-current-password'
+  | 'current-credential-invalid'
+  | 'recent-login-required'
+  | 'password-update-weak-password'
+  | 'password-update-network-unavailable'
+  | 'password-update-failed'
   | 'unknown'
 
 const authErrorMessages: Record<AuthErrorCode, string> = {
@@ -29,6 +37,19 @@ const authErrorMessages: Record<AuthErrorCode, string> = {
     'Não foi possível enviar o e-mail de verificação. Tente novamente.',
   'user-not-authenticated':
     'Sua sessão não está disponível. Entre novamente para continuar.',
+  'user-email-unavailable': 'Não foi possível atualizar a senha desta conta.',
+  'password-update-user-not-authenticated':
+    'Não foi possível identificar a sessão atual. Entre novamente.',
+  'incorrect-current-password': 'A senha atual está incorreta.',
+  'current-credential-invalid': 'Não foi possível confirmar sua senha atual.',
+  'recent-login-required':
+    'Sua sessão precisa ser confirmada novamente. Informe sua senha atual e tente outra vez.',
+  'password-update-weak-password':
+    'A nova senha não atende aos requisitos de segurança.',
+  'password-update-network-unavailable':
+    'Não foi possível atualizar a senha. Verifique sua conexão e tente novamente.',
+  'password-update-failed':
+    'Não foi possível atualizar a senha. Tente novamente.',
   unknown: 'Não foi possível concluir a autenticação. Tente novamente.',
 }
 

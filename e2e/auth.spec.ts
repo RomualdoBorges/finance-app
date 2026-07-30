@@ -96,3 +96,58 @@ test('reenvia e atualiza manualmente a verificação de e-mail', async ({
   ).toBeVisible()
   await expect(page).toHaveURL(/\/$/)
 })
+
+test('valida, trata senha atual incorreta e atualiza a senha sem sair', async ({
+  page,
+}) => {
+  await page.goto('/?e2e-authenticated&e2e-email-verified')
+  await page.getByRole('link', { name: 'Alterar senha' }).click()
+
+  await expect(page).toHaveURL(/\/conta\/alterar-senha$/)
+  await expect(
+    page.getByRole('heading', { level: 1, name: 'Alterar senha' }),
+  ).toBeVisible()
+
+  await page.getByLabel('Senha atual').fill('senha-atual-valida')
+  await page.getByLabel('Nova senha', { exact: true }).fill('nova-senha')
+  await page.getByLabel('Confirmar nova senha').fill('confirmacao-diferente')
+  await page.getByRole('button', { name: 'Atualizar senha' }).click()
+  await expect(
+    page.getByText('A confirmação da senha não corresponde à nova senha.'),
+  ).toBeVisible()
+  await expect(page.getByRole('status')).not.toBeVisible()
+
+  await page.getByLabel('Senha atual').fill('senha-atual-incorreta')
+  await page.getByLabel('Confirmar nova senha').fill('nova-senha')
+  await page.getByRole('button', { name: 'Atualizar senha' }).click()
+  await expect(page.getByRole('alert')).toContainText(
+    'A senha atual está incorreta.',
+  )
+  await expect(page).toHaveURL(/\/conta\/alterar-senha$/)
+
+  await page.getByLabel('Senha atual').fill('senha-atual-valida')
+  await page.getByRole('button', { name: 'Atualizar senha' }).click()
+  await expect(page.getByRole('status')).toContainText(
+    'Senha atualizada com sucesso.',
+  )
+  await expect(page.getByLabel('Senha atual')).toHaveValue('')
+  await expect(page.getByLabel('Nova senha', { exact: true })).toHaveValue('')
+  await expect(page.getByLabel('Confirmar nova senha')).toHaveValue('')
+  await expect(page).toHaveURL(/\/conta\/alterar-senha$/)
+  await expect(
+    page.getByRole('button', { name: 'Sair da conta' }),
+  ).toBeVisible()
+})
+
+test('protege a atualização de senha por sessão e verificação', async ({
+  page,
+}) => {
+  await page.goto('/conta/alterar-senha')
+  await expect(page).toHaveURL(/\/login$/)
+
+  await page.goto('/conta/alterar-senha?e2e-authenticated')
+  await expect(page).toHaveURL(/\/verificar-email$/)
+  await expect(
+    page.getByRole('heading', { level: 1, name: 'Verifique seu e-mail' }),
+  ).toBeVisible()
+})

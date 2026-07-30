@@ -38,6 +38,13 @@ export class AuthService {
     return this.repository.reloadAuthenticatedUser()
   }
 
+  updatePassword(input: {
+    readonly currentPassword: string
+    readonly newPassword: string
+  }): Promise<void> {
+    return this.repository.updatePassword(input)
+  }
+
   subscribeToAuthState(
     listener: (user: AuthenticatedUser | null) => void,
   ): () => void {
