@@ -5,6 +5,7 @@ import { MobileNavigation } from '../components/navigation/MobileNavigation'
 import { ThemeSelector } from '../components/shared/ThemeSelector'
 import { SignOutButton } from '../features/auth/components/SignOutButton'
 import { EmailVerificationNotice } from '../features/auth/components/EmailVerificationNotice'
+import { UserProfileStatusNotice } from '../features/user/components/UserProfileStatusNotice'
 
 export function AppLayout() {
   return (
@@ -32,6 +33,7 @@ export function AppLayout() {
         </div>
       </header>
       <EmailVerificationNotice />
+      <UserProfileStatusNotice />
 
       <div className="flex min-h-[calc(100vh-4rem)]">
         <AppSidebar />

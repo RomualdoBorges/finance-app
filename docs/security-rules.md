@@ -10,6 +10,8 @@ As Rules de Firestore e Storage devem começar bloqueando tudo e liberar apenas 
 - senha, hash, tokens e credenciais bancárias nunca são aceitos no documento do usuário;
 - exclusão de conta e outras operações privilegiadas passam por backend confiável.
 
+Em `/users/{userId}`, leitura, criação e atualização são permitidas somente quando `request.auth.uid == userId`. São aceitos exclusivamente os três dados básicos nullable e os dois timestamps do servidor; `createdAt` é imutável e exclusão é bloqueada nesta etapa.
+
 ## Participação em grupo
 
 O acesso a `/financialGroups/{groupId}` e subcoleções exige documento ativo em `/financialGroups/{groupId}/members/{request.auth.uid}`. Authentication não concede acesso por si só.

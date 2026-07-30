@@ -2,6 +2,10 @@
 
 Modelo definido pela especificação oficial. Todos os dados financeiros pertencem a `/financialGroups/{groupId}`; até o usuário individual possui seu próprio grupo.
 
+## Usuário — Milestone 1
+
+O documento básico fica em `/users/{uid}`. O ID corresponde ao UID e não é persistido como campo. Contém apenas `email`, `displayName` e `photoURL` como string ou null, além de `createdAt` imutável e `updatedAt` condicional como timestamps do servidor. Não contém senha, tokens, claims, papéis, permissões, grupos ou dados financeiros. Detalhes estão em `docs/user-profile.md`.
+
 ## Convenções
 
 - dinheiro: número inteiro em centavos;

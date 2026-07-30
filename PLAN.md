@@ -37,7 +37,7 @@ Nenhum item está concluído por existir no template. Checkboxes só são marcad
   - [x] Verificação de e-mail
   - [x] Atualização de senha
 - [x] Exclusão de usuário e preparação para MFA
-- [ ] Documento do usuário
+- [x] Documento do usuário
 - [ ] Rotas protegidas
 - [ ] Criação idempotente do grupo individual e membro owner
 - [ ] Grupo ativo/padrão

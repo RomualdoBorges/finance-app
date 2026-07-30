@@ -4,40 +4,50 @@ import { Route, Routes } from 'react-router-dom'
 import { describe, expect, it } from 'vitest'
 
 import { AuthContext } from '../providers/AuthContext'
+import { UserProfileContext } from '../providers/UserProfileContext'
 import { renderWithProviders } from '../test/render'
 import { AppLayout } from './AppLayout'
 
 function renderLayout() {
   return renderWithProviders(
-    <AuthContext.Provider
+    <UserProfileContext.Provider
       value={{
-        status: 'authenticated',
-        user: {
-          uid: 'user-1',
-          email: null,
-          displayName: null,
-          photoURL: null,
-          emailVerified: false,
-        },
-        registerWithEmailAndPassword: () =>
-          Promise.reject(new Error('não utilizado')),
-        signInWithEmailAndPassword: () =>
-          Promise.reject(new Error('não utilizado')),
-        signOut: () => Promise.resolve(),
-        sendPasswordResetEmail: () => Promise.resolve(),
-        sendVerificationEmail: () => Promise.resolve(),
-        reloadAuthenticatedUser: () =>
-          Promise.reject(new Error('não utilizado')),
-        updatePassword: () => Promise.reject(new Error('não utilizado')),
-        deleteCurrentUser: () => Promise.reject(new Error('não utilizado')),
+        profile: null,
+        status: 'ready',
+        error: null,
+        refreshProfile: () => Promise.resolve(),
       }}
     >
-      <Routes>
-        <Route element={<AppLayout />}>
-          <Route path="/" element={<h1>Conteúdo de teste</h1>} />
-        </Route>
-      </Routes>
-    </AuthContext.Provider>,
+      <AuthContext.Provider
+        value={{
+          status: 'authenticated',
+          user: {
+            uid: 'user-1',
+            email: null,
+            displayName: null,
+            photoURL: null,
+            emailVerified: false,
+          },
+          registerWithEmailAndPassword: () =>
+            Promise.reject(new Error('não utilizado')),
+          signInWithEmailAndPassword: () =>
+            Promise.reject(new Error('não utilizado')),
+          signOut: () => Promise.resolve(),
+          sendPasswordResetEmail: () => Promise.resolve(),
+          sendVerificationEmail: () => Promise.resolve(),
+          reloadAuthenticatedUser: () =>
+            Promise.reject(new Error('não utilizado')),
+          updatePassword: () => Promise.reject(new Error('não utilizado')),
+          deleteCurrentUser: () => Promise.reject(new Error('não utilizado')),
+        }}
+      >
+        <Routes>
+          <Route element={<AppLayout />}>
+            <Route path="/" element={<h1>Conteúdo de teste</h1>} />
+          </Route>
+        </Routes>
+      </AuthContext.Provider>
+    </UserProfileContext.Provider>,
   )
 }
 

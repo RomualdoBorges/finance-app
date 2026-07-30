@@ -16,6 +16,7 @@
     "test:run": "vitest run",
     "test:package-manager": "node --test scripts/verify-package-manager.test.mjs",
     "test:e2e": "playwright test",
+    "test:rules": "firebase emulators:exec --only firestore \"pnpm exec vitest run --config vitest.rules.config.ts\"",
     "test:e2e:ui": "playwright test --ui",
     "firebase:emulators": "firebase emulators:start --only auth,firestore,functions,storage,hosting",
     "firebase:emulators:export": "firebase emulators:export .firebase/emulator-data",
@@ -46,6 +47,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@firebase/rules-unit-testing": "^5.0.1",
     "@playwright/test": "^1.62.0",
     "@tailwindcss/vite": "^4.3.3",
     "@testing-library/jest-dom": "^7.0.0",

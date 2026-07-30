@@ -9,7 +9,7 @@ Os fluxos do MVP e das fases futuras são separados para impedir implementação
 1. Usuário informa dados, e-mail e senha.
 2. Formulário valida os campos; Authentication cria a identidade.
 3. Usuário autenticado segue obrigatoriamente à etapa de verificação.
-4. Nenhum perfil, senha, token ou credencial financeira é persistido no Firestore nesta etapa.
+4. Após a autenticação, a aplicação garante idempotentemente o perfil básico em `users/{uid}`; senha, token e credencial financeira não são persistidos.
 
 Também são previstos cadastro/login com Google, recuperação e atualização de senha, logout, exclusão de usuário e MFA quando habilitado.
 
@@ -27,6 +27,17 @@ Também são previstos cadastro/login com Google, recuperação e atualização 
 3. O cadastro e a autenticação não enviam a mensagem automaticamente.
 4. Depois de abrir o link recebido, o usuário solicita a atualização manual do estado.
 5. A aplicação recarrega o usuário do Authentication e segue normalmente quando `emailVerified` passa a verdadeiro.
+
+### Documento do usuário
+
+1. O listener existente do Authentication publica o usuário autenticado.
+2. O provider consulta `users/{uid}` sem criar outro listener de autenticação ou do Firestore.
+3. Se não existir, cria dados básicos com timestamps do servidor.
+4. Se existir, sincroniza somente dados básicos alterados, preservando `createdAt` e campos futuros.
+5. Sem alterações, não escreve nem altera `updatedAt`.
+6. Em falha, a sessão e o conteúdo continuam disponíveis; um aviso permite tentar novamente.
+
+Não há edição manual de perfil, avatar, grupos ou dados financeiros nesta etapa.
 
 ### Atualização de senha
 
@@ -46,7 +57,7 @@ Também são previstos cadastro/login com Google, recuperação e atualização 
 5. A aplicação executa o fluxo de logout existente; a observação da sessão e os guards redirecionam para o login.
 6. Em caso de falha, a página não navega e permite nova tentativa sem persistir a senha.
 
-Nesta etapa, a exclusão remove somente a conta do Firebase Authentication. Não existem documento de usuário nem dados financeiros a limpar. Alteração de senha e exclusão compartilham contratos de reautenticação preparados para uma futura segunda etapa, mas MFA ainda não está implementado.
+Nesta etapa, a exclusão remove somente a conta do Firebase Authentication. O documento `users/{uid}` não é removido temporariamente, e ainda não existem dados financeiros a limpar. Alteração de senha e exclusão compartilham contratos de reautenticação preparados para uma futura segunda etapa, mas MFA ainda não está implementado.
 
 ### Onboarding e grupo individual
 
