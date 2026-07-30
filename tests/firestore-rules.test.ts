@@ -7,9 +7,11 @@ import {
 import { readFile } from 'node:fs/promises'
 import { afterAll, beforeAll, beforeEach, describe, it } from 'vitest'
 import {
+  collection,
   deleteDoc,
   doc,
   getDoc,
+  getDocs,
   serverTimestamp,
   setDoc,
   Timestamp,
@@ -57,6 +59,35 @@ function groupRef(firestore: Firestore, groupId: string) {
 
 function membershipRef(firestore: Firestore, groupId: string, userId: string) {
   return doc(firestore, 'financialGroups', groupId, 'members', userId)
+}
+
+function categoryRef(
+  firestore: Firestore,
+  groupId: string,
+  categoryId: string,
+) {
+  return doc(firestore, 'financialGroups', groupId, 'categories', categoryId)
+}
+
+function categoryData(
+  groupId: string,
+  userId: string,
+  overrides: Readonly<Record<string, unknown>> = {},
+) {
+  return {
+    groupId,
+    name: 'Moradia',
+    normalizedName: 'moradia',
+    type: 'expense',
+    origin: 'default',
+    status: 'active',
+    parentCategoryId: null,
+    icon: 'house',
+    createdBy: userId,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+    ...overrides,
+  }
 }
 
 beforeAll(async () => {
@@ -299,5 +330,132 @@ describe('Firestore Rules de activeGroupId', () => {
         }),
       )
     }
+  })
+})
+
+describe('Firestore Rules de categorias', () => {
+  it('permite ao membro ativo listar e criar raiz e filha no mesmo batch', async () => {
+    await seedPersonalGroup('group-a', 'user-1')
+    const firestore = environment.authenticatedContext('user-1').firestore()
+    const batch = writeBatch(firestore)
+    batch.set(
+      categoryRef(firestore, 'group-a', 'expense-housing'),
+      categoryData('group-a', 'user-1'),
+    )
+    batch.set(
+      categoryRef(firestore, 'group-a', 'expense-housing-rent'),
+      categoryData('group-a', 'user-1', {
+        name: 'Aluguel',
+        normalizedName: 'aluguel',
+        parentCategoryId: 'expense-housing',
+        icon: null,
+      }),
+    )
+    await assertSucceeds(batch.commit())
+    await assertSucceeds(
+      getDocs(collection(firestore, 'financialGroups/group-a/categories')),
+    )
+  })
+
+  it('permite categoria personalizada com contrato exato', async () => {
+    await seedPersonalGroup('group-a', 'user-1')
+    const firestore = environment.authenticatedContext('user-1').firestore()
+    await assertSucceeds(
+      setDoc(
+        categoryRef(firestore, 'group-a', 'custom-pets'),
+        categoryData('group-a', 'user-1', {
+          name: 'Pets',
+          normalizedName: 'pets',
+          origin: 'custom',
+          icon: null,
+        }),
+      ),
+    )
+  })
+
+  it('bloqueia anônimo, usuário externo e identidade de outro grupo', async () => {
+    await seedPersonalGroup('group-a', 'user-1')
+    const anonymous = environment.unauthenticatedContext().firestore()
+    const outsider = environment.authenticatedContext('user-2').firestore()
+    const owner = environment.authenticatedContext('user-1').firestore()
+
+    await assertFails(
+      getDocs(collection(anonymous, 'financialGroups/group-a/categories')),
+    )
+    await assertFails(
+      getDocs(collection(outsider, 'financialGroups/group-a/categories')),
+    )
+    await assertFails(
+      setDoc(
+        categoryRef(owner, 'group-a', 'wrong-group'),
+        categoryData('group-b', 'user-1'),
+      ),
+    )
+  })
+
+  it('bloqueia campos extras, timestamps locais e createdBy divergente', async () => {
+    await seedPersonalGroup('group-a', 'user-1')
+    const firestore = environment.authenticatedContext('user-1').firestore()
+    const invalidCases = [
+      categoryData('group-a', 'user-1', { extra: true }),
+      categoryData('group-a', 'user-1', {
+        createdAt: Timestamp.fromDate(new Date('2026-01-01T00:00:00Z')),
+      }),
+      categoryData('group-a', 'user-2'),
+      categoryData('group-a', 'user-1', { status: 'archived' }),
+    ]
+    for (const [index, invalidData] of invalidCases.entries()) {
+      await assertFails(
+        setDoc(
+          categoryRef(firestore, 'group-a', `invalid-${index}`),
+          invalidData,
+        ),
+      )
+    }
+  })
+
+  it('bloqueia pai ausente, pai de outro tipo e profundidade maior que um', async () => {
+    await seedPersonalGroup('group-a', 'user-1')
+    const firestore = environment.authenticatedContext('user-1').firestore()
+    await setDoc(
+      categoryRef(firestore, 'group-a', 'expense-root'),
+      categoryData('group-a', 'user-1'),
+    )
+    await setDoc(
+      categoryRef(firestore, 'group-a', 'expense-child'),
+      categoryData('group-a', 'user-1', {
+        name: 'Aluguel',
+        normalizedName: 'aluguel',
+        parentCategoryId: 'expense-root',
+      }),
+    )
+
+    for (const [id, overrides] of [
+      ['missing-parent', { parentCategoryId: 'missing' }],
+      ['wrong-type', { parentCategoryId: 'expense-root', type: 'income' }],
+      ['grandchild', { parentCategoryId: 'expense-child' }],
+    ] as const) {
+      await assertFails(
+        setDoc(
+          categoryRef(firestore, 'group-a', id),
+          categoryData('group-a', 'user-1', overrides),
+        ),
+      )
+    }
+  })
+
+  it('bloqueia update e delete mesmo para owner', async () => {
+    await seedPersonalGroup('group-a', 'user-1')
+    const firestore = environment.authenticatedContext('user-1').firestore()
+    const reference = categoryRef(firestore, 'group-a', 'expense-root')
+    await setDoc(reference, categoryData('group-a', 'user-1'))
+    await assertFails(
+      updateDoc(reference, {
+        name: 'Casa',
+        normalizedName: 'casa',
+        updatedAt: serverTimestamp(),
+      }),
+    )
+    await assertFails(deleteDoc(reference))
   })
 })

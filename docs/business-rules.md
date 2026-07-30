@@ -28,7 +28,8 @@
 
 ## Categorias
 
-- categorias podem ser de receita ou despesa e subcategorias usam `parentId`;
+- categorias podem ser de receita ou despesa e subcategorias usam
+  `parentCategoryId`, limitado a uma categoria raiz do mesmo grupo e tipo;
 - categoria utilizada deve ser arquivada (`status: archived`), nunca apagada;
 - arquivamento preserva o significado do histórico;
 - regras automáticas não podem aplicar categoria incompatível com o lançamento.

@@ -12,6 +12,9 @@ import { FirestoreGroupRepository } from '../../features/group/repositories/Fire
 import { FirestoreMembershipRepository } from '../../features/group/repositories/FirestoreMembershipRepository'
 import { FirestorePersonalGroupProvisioningRepository } from '../../features/group/repositories/FirestorePersonalGroupProvisioningRepository'
 import { GroupService } from '../../features/group/services/GroupService'
+import { FirestoreCategoryRepository } from '../../features/category/repositories/FirestoreCategoryRepository'
+import { E2ECategoryRepository } from '../../features/category/repositories/E2ECategoryRepository'
+import { CategoryService } from '../../features/category/services/CategoryService'
 
 const backendHealthRepository = new FirebaseBackendHealthRepository(
   firebaseClients,
@@ -34,6 +37,10 @@ const membershipRepository =
 const groupProvisioningRepository =
   e2eGroupRepository ??
   new FirestorePersonalGroupProvisioningRepository(firebaseClients.firestore)
+const categoryRepository =
+  import.meta.env.MODE === 'e2e'
+    ? new E2ECategoryRepository()
+    : new FirestoreCategoryRepository(firebaseClients.firestore)
 
 export const services = {
   backendHealth: new BackendHealthService(backendHealthRepository),
@@ -45,4 +52,5 @@ export const services = {
     membershipRepository,
     userRepository,
   ),
+  category: new CategoryService(categoryRepository),
 } as const

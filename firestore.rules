@@ -18,6 +18,10 @@ service cloud.firestore {
       return /databases/$(database)/documents/financialGroups/$(groupId)/members/$(userId);
     }
 
+    function categoryPath(groupId, categoryId) {
+      return /databases/$(database)/documents/financialGroups/$(groupId)/categories/$(categoryId);
+    }
+
     function isActiveOwnerMembership(membership) {
       return membership.data.userId == request.auth.uid
         && membership.data.role == 'owner'
@@ -149,6 +153,66 @@ service cloud.firestore {
         && request.resource.data.updatedAt == request.time;
     }
 
+    function hasValidCategoryShape(groupId) {
+      return request.resource.data.keys().hasOnly([
+          'groupId',
+          'name',
+          'normalizedName',
+          'type',
+          'origin',
+          'status',
+          'parentCategoryId',
+          'icon',
+          'createdBy',
+          'createdAt',
+          'updatedAt'
+        ])
+        && request.resource.data.keys().hasAll([
+          'groupId',
+          'name',
+          'normalizedName',
+          'type',
+          'origin',
+          'status',
+          'parentCategoryId',
+          'icon',
+          'createdBy',
+          'createdAt',
+          'updatedAt'
+        ])
+        && request.resource.data.groupId == groupId
+        && request.resource.data.name is string
+        && request.resource.data.name.size() >= 2
+        && request.resource.data.name.size() <= 60
+        && request.resource.data.normalizedName is string
+        && request.resource.data.normalizedName.size() >= 2
+        && request.resource.data.normalizedName.size() <= 60
+        && request.resource.data.type in ['income', 'expense']
+        && request.resource.data.origin in ['default', 'custom']
+        && request.resource.data.status == 'active'
+        && (request.resource.data.parentCategoryId == null
+          || request.resource.data.parentCategoryId is string)
+        && (request.resource.data.icon == null
+          || (request.resource.data.icon is string
+            && request.resource.data.icon.size() <= 40))
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time;
+    }
+
+    function hasValidCategoryParent(groupId) {
+      let parentId = request.resource.data.parentCategoryId;
+      return parentId == null
+        || (
+          parentId.size() > 0
+          && existsAfter(categoryPath(groupId, parentId))
+          && getAfter(categoryPath(groupId, parentId)).data.groupId == groupId
+          && getAfter(categoryPath(groupId, parentId)).data.status == 'active'
+          && getAfter(categoryPath(groupId, parentId)).data.parentCategoryId == null
+          && getAfter(categoryPath(groupId, parentId)).data.type == request.resource.data.type
+        );
+    }
+
     match /users/{userId} {
       allow read: if isSelf(userId);
 
@@ -200,6 +264,17 @@ service cloud.firestore {
           && getAfter(groupPath(groupId)).data.ownerId == request.auth.uid
           && getAfter(groupPath(groupId)).data.type == 'personal'
           && getAfter(groupPath(groupId)).data.status == 'active';
+
+        allow update, delete: if false;
+      }
+
+      match /categories/{categoryId} {
+        allow read: if isActiveMember(groupId);
+
+        allow create: if isActiveMember(groupId)
+          && categoryId.size() > 0
+          && hasValidCategoryShape(groupId)
+          && hasValidCategoryParent(groupId);
 
         allow update, delete: if false;
       }

@@ -57,7 +57,7 @@ Nenhum item está concluído por existir no template. Checkboxes só são marcad
 
 ### Milestone 2 — Categorias e contas
 
-- [ ] Categorias padrão, personalizadas e subcategorias
+- [x] Categorias padrão, personalizadas e subcategorias
 - [ ] Criação, edição e arquivamento de categoria usada
 - [ ] Cadastro, edição e arquivamento de contas
 - [ ] Tipos e opções de inclusão em saldo/patrimônio
