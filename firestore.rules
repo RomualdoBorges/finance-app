@@ -27,6 +27,7 @@ service cloud.firestore {
         'email',
         'displayName',
         'photoURL',
+        'activeGroupId',
         'createdAt',
         'updatedAt'
       ]);
@@ -55,8 +56,23 @@ service cloud.firestore {
       return hasOnlyUserProfileFields()
         && hasAllUserProfileFields()
         && hasValidNullableStrings()
+        && (!request.resource.data.keys().hasAny(['activeGroupId'])
+          || request.resource.data.activeGroupId is string)
         && request.resource.data.createdAt is timestamp
         && request.resource.data.updatedAt is timestamp;
+    }
+
+    function hasValidActiveGroup() {
+      return !request.resource.data.keys().hasAny(['activeGroupId'])
+        || (
+          exists(personalGroupPath(request.resource.data.activeGroupId))
+          && exists(personalMembershipPath(request.auth.uid))
+          && get(personalMembershipPath(request.auth.uid)).data.groupId
+            == request.resource.data.activeGroupId
+          && get(personalMembershipPath(request.auth.uid)).data.userId
+            == request.auth.uid
+          && get(personalMembershipPath(request.auth.uid)).data.role == 'OWNER'
+        );
     }
 
     match /users/{userId} {
@@ -64,11 +80,13 @@ service cloud.firestore {
 
       allow create: if isCurrentUser(userId)
         && hasValidUserProfileShape()
+        && hasValidActiveGroup()
         && request.resource.data.createdAt == request.time
         && request.resource.data.updatedAt == request.time;
 
       allow update: if isCurrentUser(userId)
         && hasValidUserProfileShape()
+        && hasValidActiveGroup()
         && request.resource.data.createdAt == resource.data.createdAt
         && request.resource.data.updatedAt == request.time;
 

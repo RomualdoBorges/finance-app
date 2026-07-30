@@ -7,6 +7,7 @@ export type GroupStatus = 'idle' | 'loading' | 'ready' | 'error'
 
 export type GroupContextValue = {
   readonly group: Group | null
+  readonly activeGroup: Group | null
   readonly membership: GroupMember | null
   readonly status: GroupStatus
   readonly error: GroupError | null

@@ -57,6 +57,7 @@ describe('mapUserProfileSnapshot', () => {
       email: 'pessoa@example.com',
       displayName: null,
       photoURL: null,
+      activeGroupId: null,
       createdAt,
       updatedAt,
     })

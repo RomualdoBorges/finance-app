@@ -31,6 +31,7 @@ export class E2EUserRepository implements UserRepository {
       email: user.email,
       displayName: user.displayName,
       photoURL: user.photoURL,
+      activeGroupId: existing?.activeGroupId ?? null,
       createdAt: timestamp,
       updatedAt:
         existing === undefined ? timestamp : new Date('2026-01-02T00:00:00Z'),

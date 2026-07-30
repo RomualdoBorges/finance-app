@@ -34,11 +34,32 @@ describe('GroupService', () => {
       ensurePersonalGroup,
       getGroup: vi.fn(),
       getMembership: vi.fn(),
+      ensureActiveGroup: vi.fn(),
+      getActiveGroup: vi.fn(),
     }
 
     await expect(
       new GroupService(repository).ensurePersonalGroup(user),
     ).resolves.toBe(personalGroup)
     expect(ensurePersonalGroup).toHaveBeenCalledWith(user)
+  })
+
+  it('delega persistência e leitura do grupo ativo', async () => {
+    const ensureActiveGroup = vi.fn()
+    const getActiveGroup = vi.fn()
+    const repository: GroupRepository = {
+      ensurePersonalGroup: vi.fn(),
+      getGroup: vi.fn(),
+      getMembership: vi.fn(),
+      ensureActiveGroup,
+      getActiveGroup,
+    }
+    const service = new GroupService(repository)
+
+    await service.ensureActiveGroup('user-1', 'user-1')
+    await service.getActiveGroup('user-1')
+
+    expect(ensureActiveGroup).toHaveBeenCalledWith('user-1', 'user-1')
+    expect(getActiveGroup).toHaveBeenCalledWith('user-1')
   })
 })

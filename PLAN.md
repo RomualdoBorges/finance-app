@@ -40,7 +40,7 @@ Nenhum item está concluído por existir no template. Checkboxes só são marcad
 - [x] Documento do usuário
 - [x] Rotas protegidas
 - [x] Criação idempotente do grupo individual e membro owner
-- [ ] Grupo ativo/padrão
+- [x] Grupo ativo/padrão
 
 ### Milestone 2 — Categorias e contas
 

@@ -105,6 +105,7 @@ export function mapUserProfileSnapshot(
   const email = values['email']
   const displayName = values['displayName']
   const photoURL = values['photoURL']
+  const activeGroupId = values['activeGroupId'] ?? null
   const createdAt = toDate(values['createdAt'])
   const updatedAt = toDate(values['updatedAt'])
 
@@ -113,6 +114,7 @@ export function mapUserProfileSnapshot(
     !isNullableString(email) ||
     !isNullableString(displayName) ||
     !isNullableString(photoURL) ||
+    !isNullableString(activeGroupId) ||
     createdAt === null ||
     updatedAt === null
   ) {
@@ -124,6 +126,7 @@ export function mapUserProfileSnapshot(
     email,
     displayName,
     photoURL,
+    activeGroupId,
     createdAt,
     updatedAt,
   }

@@ -1,4 +1,5 @@
 import type { AuthenticatedUser } from '../../auth/domain/AuthenticatedUser'
+import type { UserProfile } from '../../user/domain/UserProfile'
 import {
   PERSONAL_GROUP_NAME,
   type Group,
@@ -10,6 +11,7 @@ import type { GroupRepository } from './GroupRepository'
 export class E2EGroupRepository implements GroupRepository {
   private readonly groups = new Map<string, Group>()
   private readonly memberships = new Map<string, GroupMember>()
+  private readonly profiles = new Map<string, UserProfile>()
 
   ensurePersonalGroup(user: AuthenticatedUser): Promise<PersonalGroup> {
     const createdAt = new Date('2026-01-01T00:00:00Z')
@@ -37,5 +39,30 @@ export class E2EGroupRepository implements GroupRepository {
 
   getMembership(userId: string): Promise<GroupMember | null> {
     return Promise.resolve(this.memberships.get(userId) ?? null)
+  }
+
+  ensureActiveGroup(userId: string, groupId: string): Promise<UserProfile> {
+    const existing = this.profiles.get(userId)
+    const timestamp = new Date('2026-01-01T00:00:00Z')
+    const profile: UserProfile = existing ?? {
+      id: userId,
+      email: null,
+      displayName: null,
+      photoURL: null,
+      activeGroupId: groupId,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    }
+    this.profiles.set(userId, profile)
+    return Promise.resolve(profile)
+  }
+
+  getActiveGroup(userId: string): Promise<Group | null> {
+    const activeGroupId = this.profiles.get(userId)?.activeGroupId
+    return Promise.resolve(
+      activeGroupId === null || activeGroupId === undefined
+        ? null
+        : (this.groups.get(activeGroupId) ?? null),
+    )
   }
 }

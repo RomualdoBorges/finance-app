@@ -38,10 +38,23 @@ const membershipSnapshot = {
     createdAt: timestamp,
   },
 }
+const profileSnapshot = (activeGroupId?: string) => ({
+  id: 'user-1',
+  exists: true,
+  data: {
+    email: null,
+    displayName: null,
+    photoURL: null,
+    ...(activeGroupId === undefined ? {} : { activeGroupId }),
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  },
+})
 
 function createRepository(initiallyExists: boolean) {
   const groupReference = { path: 'groups/user-1' }
   const membershipReference = { path: 'groupMembers/user-1' }
+  const profileReference = { path: 'users/user-1' }
   const set = vi.fn()
   const get = vi
     .fn()
@@ -59,15 +72,19 @@ function createRepository(initiallyExists: boolean) {
     async (_firestore, operation) => {
       await operation({ get, set })
     }
+  const getDocument = vi
+    .fn()
+    .mockResolvedValueOnce(groupSnapshot)
+    .mockResolvedValueOnce(membershipSnapshot)
+  const serverTimestampValue = { serverTimestamp: true }
   const operations: FirestoreGroupOperations = {
     groupReference: vi.fn().mockReturnValue(groupReference),
     membershipReference: vi.fn().mockReturnValue(membershipReference),
-    getDocument: vi
-      .fn()
-      .mockResolvedValueOnce(groupSnapshot)
-      .mockResolvedValueOnce(membershipSnapshot),
+    profileReference: vi.fn().mockReturnValue(profileReference),
+    getDocument,
+    mergeDocument: vi.fn().mockResolvedValue(undefined),
     runTransaction: vi.fn(runGroupTransaction),
-    serverTimestamp: vi.fn().mockReturnValue({ serverTimestamp: true }),
+    serverTimestamp: vi.fn().mockReturnValue(serverTimestampValue),
   }
   return {
     repository: new FirestoreGroupRepository({} as Firestore, operations),
@@ -75,6 +92,8 @@ function createRepository(initiallyExists: boolean) {
     set,
     groupReference,
     membershipReference,
+    getDocument,
+    serverTimestampValue,
   }
 }
 
@@ -142,5 +161,54 @@ describe('FirestoreGroupRepository', () => {
 
     expect(set).not.toHaveBeenCalled()
     expect(operations.serverTimestamp).not.toHaveBeenCalled()
+  })
+
+  it('persiste activeGroupId ausente e retorna o profile atualizado', async () => {
+    const { repository, operations, getDocument, serverTimestampValue } =
+      createRepository(true)
+    getDocument
+      .mockReset()
+      .mockResolvedValueOnce(profileSnapshot())
+      .mockResolvedValueOnce(profileSnapshot('user-1'))
+
+    await expect(
+      repository.ensureActiveGroup('user-1', 'user-1'),
+    ).resolves.toMatchObject({ activeGroupId: 'user-1' })
+    expect(operations.mergeDocument).toHaveBeenCalledWith(expect.anything(), {
+      activeGroupId: 'user-1',
+      updatedAt: serverTimestampValue,
+    })
+  })
+
+  it('não escreve quando activeGroupId já corresponde ao grupo', async () => {
+    const { repository, operations, getDocument } = createRepository(true)
+    getDocument.mockReset().mockResolvedValue(profileSnapshot('user-1'))
+
+    await repository.ensureActiveGroup('user-1', 'user-1')
+    await repository.ensureActiveGroup('user-1', 'user-1')
+
+    expect(operations.mergeDocument).not.toHaveBeenCalled()
+    expect(operations.serverTimestamp).not.toHaveBeenCalled()
+  })
+
+  it('retorna o grupo ativo ou null quando o campo/grupo não existe', async () => {
+    const { repository, getDocument } = createRepository(true)
+    getDocument
+      .mockReset()
+      .mockResolvedValueOnce(profileSnapshot())
+      .mockResolvedValueOnce(profileSnapshot('user-1'))
+      .mockResolvedValueOnce({
+        id: 'user-1',
+        exists: false,
+        data: undefined,
+      })
+      .mockResolvedValueOnce(profileSnapshot('user-1'))
+      .mockResolvedValueOnce(groupSnapshot)
+
+    await expect(repository.getActiveGroup('user-1')).resolves.toBeNull()
+    await expect(repository.getActiveGroup('user-1')).resolves.toBeNull()
+    await expect(repository.getActiveGroup('user-1')).resolves.toMatchObject({
+      id: 'user-1',
+    })
   })
 })

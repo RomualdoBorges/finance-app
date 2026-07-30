@@ -269,3 +269,46 @@ describe('Firestore Rules de grupo individual', () => {
     await assertFails(deleteDoc(doc(ownerFirestore, 'groupMembers', 'user-1')))
   })
 })
+
+describe('Firestore Rules de activeGroupId', () => {
+  it('permite definir o próprio grupo quando o usuário é OWNER', async () => {
+    await seedProfile('user-1')
+    await seedPersonalGroup('user-1')
+    const profile = doc(
+      environment.authenticatedContext('user-1').firestore(),
+      'users',
+      'user-1',
+    )
+
+    await assertSucceeds(
+      updateDoc(profile, {
+        activeGroupId: 'user-1',
+        updatedAt: serverTimestamp(),
+      }),
+    )
+  })
+
+  it('bloqueia grupo inexistente e grupo de outro usuário', async () => {
+    await seedProfile('user-1')
+    await seedPersonalGroup('user-1')
+    await seedPersonalGroup('user-2')
+    const profile = doc(
+      environment.authenticatedContext('user-1').firestore(),
+      'users',
+      'user-1',
+    )
+
+    await assertFails(
+      updateDoc(profile, {
+        activeGroupId: 'inexistente',
+        updatedAt: serverTimestamp(),
+      }),
+    )
+    await assertFails(
+      updateDoc(profile, {
+        activeGroupId: 'user-2',
+        updatedAt: serverTimestamp(),
+      }),
+    )
+  })
+})

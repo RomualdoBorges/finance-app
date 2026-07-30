@@ -55,4 +55,4 @@ Testes unitários e de integração usam mocks do repository e não acessam rede
 
 Senhas permanecem somente no estado do React Hook Form e não são persistidas em URL, storage, Zustand ou logs. Nenhum token é exposto e nenhum acesso ao Firestore foi adicionado.
 
-Continuam pendentes: confirmação de redefinição por código, MFA, grupos compartilhados e grupo ativo/padrão. O documento básico está descrito em `docs/user-profile.md` e o grupo individual em `docs/personal-group.md`. A exclusão remove somente a identidade do Firebase Authentication e, temporariamente, não remove os documentos do Firestore. Nenhuma regra de negócio financeira ou autorização por papéis adicionais foi adicionada nesta etapa.
+Continuam pendentes: confirmação de redefinição por código, MFA, grupos compartilhados e troca de grupo. O documento básico está descrito em `docs/user-profile.md` e o grupo individual ativo em `docs/personal-group.md`. A exclusão remove somente a identidade do Firebase Authentication e, temporariamente, não remove os documentos do Firestore. Nenhuma regra de negócio financeira ou autorização por papéis adicionais foi adicionada nesta etapa.

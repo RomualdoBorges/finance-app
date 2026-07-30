@@ -14,6 +14,9 @@ groupMembers/{uid}
   userId: uid
   role: "OWNER"
   createdAt: Timestamp
+
+users/{uid}
+  activeGroupId: uid
 ```
 
 `FirestoreGroupRepository.ensurePersonalGroup` lê os dois documentos em uma
@@ -25,6 +28,12 @@ As Rules permitem o bootstrap conjunto apenas ao usuário autenticado cujo UID �
 o ID do grupo e do vínculo. Grupo e membership não podem ser atualizados ou
 excluídos pelo cliente nesta etapa. A leitura de outro usuário é bloqueada.
 
-`GroupProvider` expõe `group`, `membership`, `status` e `refresh()`. Falhas são
-não bloqueantes. Troca de grupo, grupo ativo/padrão, convites, compartilhamento,
-outros papéis e recursos financeiros continuam fora do escopo.
+Depois de garantir grupo e membership, o mesmo repository preenche
+`activeGroupId` somente se estiver ausente e carrega esse grupo. Se o campo já
+for igual ao UID, não há escrita nem alteração de `updatedAt`.
+
+`GroupProvider` é a fonte única do grupo corrente e expõe `group`,
+`activeGroup`, `membership`, `status` e `refresh()`. `useActiveGroup()` oferece
+`activeGroup`, `loading`, `error` e `refresh` sem acessar Firestore. Falhas são
+não bloqueantes. Troca de grupo, convites, compartilhamento, outros papéis e
+recursos financeiros continuam fora do escopo.

@@ -2,7 +2,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, type ReactNode } from 'react'
 
 import { useAuth } from '../features/auth/hooks/useAuth'
-import type { GroupError } from '../features/group/domain/GroupError'
+import { GroupError } from '../features/group/domain/GroupError'
 import type { GroupService } from '../features/group/services/GroupService'
 import { useUserProfile } from '../features/user/hooks/useUserProfile'
 import { GroupContext, type GroupContextValue } from './GroupContext'
@@ -29,7 +29,14 @@ export function GroupProvider({ children, service }: GroupProviderProps) {
       if (user === null) {
         throw new Error('Group query was enabled without a user')
       }
-      return service.ensurePersonalGroup(user)
+      return service.ensurePersonalGroup(user).then(async (personalGroup) => {
+        await service.ensureActiveGroup(user.uid, personalGroup.group.id)
+        const activeGroup = await service.getActiveGroup(user.uid)
+        if (activeGroup === null) {
+          throw new GroupError('not-found')
+        }
+        return { ...personalGroup, activeGroup }
+      })
     },
     enabled,
     retry: false,
@@ -49,6 +56,7 @@ export function GroupProvider({ children, service }: GroupProviderProps) {
   if (!enabled) {
     value = {
       group: null,
+      activeGroup: null,
       membership: null,
       status: 'idle',
       error: null,
@@ -57,6 +65,7 @@ export function GroupProvider({ children, service }: GroupProviderProps) {
   } else {
     value = {
       group: query.data?.group ?? null,
+      activeGroup: query.data?.activeGroup ?? null,
       membership: query.data?.membership ?? null,
       status: query.isPending ? 'loading' : query.isError ? 'error' : 'ready',
       error: query.isError ? (query.error as GroupError) : null,

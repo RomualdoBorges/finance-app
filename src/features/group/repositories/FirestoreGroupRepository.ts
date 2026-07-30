@@ -3,6 +3,7 @@ import {
   getDoc,
   runTransaction,
   serverTimestamp,
+  setDoc,
   type DocumentData,
   type DocumentReference,
   type Firestore,
@@ -10,6 +11,8 @@ import {
 } from 'firebase/firestore'
 
 import type { AuthenticatedUser } from '../../auth/domain/AuthenticatedUser'
+import type { UserProfile } from '../../user/domain/UserProfile'
+import { mapUserProfileSnapshot } from '../../user/repositories/FirestoreUserRepository'
 import {
   PERSONAL_GROUP_NAME,
   type Group,
@@ -39,7 +42,12 @@ export type FirestoreGroupOperations = {
     firestore: Firestore,
     userId: string,
   ) => unknown
+  readonly profileReference: (firestore: Firestore, userId: string) => unknown
   readonly getDocument: (reference: unknown) => Promise<Snapshot>
+  readonly mergeDocument: (
+    reference: unknown,
+    data: Readonly<Record<string, unknown>>,
+  ) => Promise<void>
   readonly runTransaction: (
     firestore: Firestore,
     operation: (transaction: GroupTransaction) => Promise<void>,
@@ -63,10 +71,13 @@ const defaultOperations: FirestoreGroupOperations = {
   groupReference: (firestore, groupId) => doc(firestore, 'groups', groupId),
   membershipReference: (firestore, userId) =>
     doc(firestore, 'groupMembers', userId),
+  profileReference: (firestore, userId) => doc(firestore, 'users', userId),
   getDocument: async (reference) =>
     snapshotFromFirebase(
       await getDoc(reference as DocumentReference<DocumentData>),
     ),
+  mergeDocument: (reference, data) =>
+    setDoc(reference as DocumentReference<DocumentData>, data, { merge: true }),
   runTransaction: (firestore, operation) =>
     runTransaction(firestore, (transaction: Transaction) =>
       operation({
@@ -202,6 +213,57 @@ export class FirestoreGroupRepository implements GroupRepository {
           this.operations.membershipReference(this.firestore, userId),
         ),
       )
+    } catch (error) {
+      throw mapGroupError(error)
+    }
+  }
+
+  async ensureActiveGroup(
+    userId: string,
+    groupId: string,
+  ): Promise<UserProfile> {
+    validateId(userId)
+    validateId(groupId)
+
+    try {
+      const profileReference = this.operations.profileReference(
+        this.firestore,
+        userId,
+      )
+      const profile = mapUserProfileSnapshot(
+        await this.operations.getDocument(profileReference),
+      )
+      if (profile === null) throw new GroupError('not-found')
+      if (profile.activeGroupId === groupId) return profile
+      if (profile.activeGroupId !== null) {
+        throw new GroupError('invalid-data')
+      }
+
+      await this.operations.mergeDocument(profileReference, {
+        activeGroupId: groupId,
+        updatedAt: this.operations.serverTimestamp(),
+      })
+      const updatedProfile = mapUserProfileSnapshot(
+        await this.operations.getDocument(profileReference),
+      )
+      if (updatedProfile === null) throw new GroupError('not-found')
+      return updatedProfile
+    } catch (error) {
+      throw mapGroupError(error)
+    }
+  }
+
+  async getActiveGroup(userId: string): Promise<Group | null> {
+    validateId(userId)
+
+    try {
+      const profile = mapUserProfileSnapshot(
+        await this.operations.getDocument(
+          this.operations.profileReference(this.firestore, userId),
+        ),
+      )
+      if (profile?.activeGroupId === null || profile === null) return null
+      return await this.getGroup(profile.activeGroupId)
     } catch (error) {
       throw mapGroupError(error)
     }

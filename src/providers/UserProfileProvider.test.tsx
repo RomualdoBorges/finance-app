@@ -19,6 +19,7 @@ const profile = (id: string): UserProfile => ({
   email: `${id}@example.com`,
   displayName: null,
   photoURL: null,
+  activeGroupId: null,
   createdAt: new Date('2026-01-01T00:00:00Z'),
   updatedAt: new Date('2026-01-01T00:00:00Z'),
 })
