@@ -1,5 +1,6 @@
 import {
   createUserWithEmailAndPassword,
+  deleteUser,
   EmailAuthProvider,
   onAuthStateChanged,
   reload,
@@ -17,6 +18,10 @@ import {
 
 import { AuthError, type AuthErrorCode } from '../domain/AuthError'
 import type { AuthenticatedUser } from '../domain/AuthenticatedUser'
+import type {
+  SensitiveAction,
+  SensitiveOperation,
+} from '../domain/SensitiveAction'
 import type { AuthRepository } from './AuthRepository'
 
 type FirebaseAuthOperations = {
@@ -43,6 +48,7 @@ type FirebaseAuthOperations = {
     credential: AuthCredential,
   ) => Promise<UserCredential>
   readonly updatePassword: (user: User, newPassword: string) => Promise<void>
+  readonly deleteUser: (user: User) => Promise<void>
   readonly subscribe: (
     auth: Auth,
     listener: (user: User | null) => void,
@@ -60,6 +66,7 @@ const defaultOperations: FirebaseAuthOperations = {
     EmailAuthProvider.credential(email, password),
   reauthenticate: reauthenticateWithCredential,
   updatePassword,
+  deleteUser,
   subscribe: onAuthStateChanged,
 }
 
@@ -148,6 +155,51 @@ function mapPasswordUpdateError(error: unknown): AuthError {
   }
 
   return new AuthError('password-update-failed')
+}
+
+function mapSensitiveActionError(
+  error: unknown,
+  operation: SensitiveOperation,
+): AuthError {
+  const code = getFirebaseErrorCode(error)
+
+  if (code === 'auth/wrong-password') {
+    return new AuthError('incorrect-current-password')
+  }
+
+  if (
+    code === 'auth/invalid-credential' ||
+    code === 'auth/invalid-login-credentials' ||
+    code === 'auth/user-mismatch'
+  ) {
+    return new AuthError('current-credential-invalid')
+  }
+
+  if (code === 'auth/requires-recent-login') {
+    return new AuthError('recent-login-required')
+  }
+
+  if (code === 'auth/user-not-found' && operation === 'delete-account') {
+    return new AuthError('account-deletion-user-not-found')
+  }
+
+  if (code === 'auth/too-many-requests') {
+    return new AuthError('too-many-requests')
+  }
+
+  if (code === 'auth/network-request-failed') {
+    return new AuthError(
+      operation === 'update-password'
+        ? 'password-update-network-unavailable'
+        : 'account-deletion-network-unavailable',
+    )
+  }
+
+  return new AuthError(
+    operation === 'update-password'
+      ? 'password-update-failed'
+      : 'account-deletion-failed',
+  )
 }
 
 export class FirebaseAuthRepository implements AuthRepository {
@@ -268,10 +320,44 @@ export class FirebaseAuthRepository implements AuthRepository {
     readonly currentPassword: string
     readonly newPassword: string
   }): Promise<void> {
+    const user = await this.reauthenticateSensitiveAction({
+      operation: 'update-password',
+      reauthentication: { currentPassword: input.currentPassword },
+    })
+
+    try {
+      await this.operations.updatePassword(user, input.newPassword)
+    } catch (error) {
+      throw mapPasswordUpdateError(error)
+    }
+  }
+
+  async deleteCurrentUser(input: {
+    readonly currentPassword: string
+  }): Promise<void> {
+    const user = await this.reauthenticateSensitiveAction({
+      operation: 'delete-account',
+      reauthentication: input,
+    })
+
+    try {
+      await this.operations.deleteUser(user)
+    } catch (error) {
+      throw mapSensitiveActionError(error, 'delete-account')
+    }
+  }
+
+  private async reauthenticateSensitiveAction(
+    action: SensitiveAction,
+  ): Promise<User> {
     const user = this.auth.currentUser
 
     if (user === null) {
-      throw new AuthError('password-update-user-not-authenticated')
+      throw new AuthError(
+        action.operation === 'update-password'
+          ? 'password-update-user-not-authenticated'
+          : 'account-deletion-user-not-authenticated',
+      )
     }
 
     if (user.email === null) {
@@ -283,17 +369,12 @@ export class FirebaseAuthRepository implements AuthRepository {
     try {
       credential = this.operations.createEmailCredential(
         user.email,
-        input.currentPassword,
+        action.reauthentication.currentPassword,
       )
       await this.operations.reauthenticate(user, credential)
+      return user
     } catch (error) {
-      throw mapPasswordUpdateError(error)
-    }
-
-    try {
-      await this.operations.updatePassword(user, input.newPassword)
-    } catch (error) {
-      throw mapPasswordUpdateError(error)
+      throw mapSensitiveActionError(error, action.operation)
     }
   }
 

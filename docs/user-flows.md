@@ -37,6 +37,17 @@ Também são previstos cadastro/login com Google, recuperação e atualização 
 5. Em caso de sucesso, o formulário é limpo e a sessão permanece autenticada na mesma página.
 6. Senha atual incorreta ou outra falha segura mantém os campos somente no estado local para correção e nova tentativa.
 
+### Exclusão da conta
+
+1. Usuário autenticado, com e-mail disponível e verificado, acessa `/conta/excluir`.
+2. Informa a senha atual e marca a confirmação de que entende que a ação é permanente.
+3. Authentication reautentica o usuário com a credencial de e-mail e senha.
+4. Somente após a reautenticação, Authentication exclui a identidade.
+5. A aplicação executa o fluxo de logout existente; a observação da sessão e os guards redirecionam para o login.
+6. Em caso de falha, a página não navega e permite nova tentativa sem persistir a senha.
+
+Nesta etapa, a exclusão remove somente a conta do Firebase Authentication. Não existem documento de usuário nem dados financeiros a limpar. Alteração de senha e exclusão compartilham contratos de reautenticação preparados para uma futura segunda etapa, mas MFA ainda não está implementado.
+
 ### Onboarding e grupo individual
 
 1. Backend verifica se o onboarding já foi processado.

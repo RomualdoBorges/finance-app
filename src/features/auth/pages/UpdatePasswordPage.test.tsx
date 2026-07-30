@@ -34,6 +34,7 @@ function renderPage(updatePassword: AuthContextValue['updatePassword']) {
         sendVerificationEmail: vi.fn(),
         reloadAuthenticatedUser: vi.fn(),
         updatePassword,
+        deleteCurrentUser: vi.fn(),
       }}
     >
       <LocationView />
@@ -216,6 +217,7 @@ describe('UpdatePasswordPage', () => {
           sendVerificationEmail: vi.fn(),
           reloadAuthenticatedUser: vi.fn(),
           updatePassword: vi.fn(),
+          deleteCurrentUser: vi.fn(),
         }}
       >
         <UpdatePasswordPage />

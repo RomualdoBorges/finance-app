@@ -32,6 +32,7 @@ function contextValue(
     sendVerificationEmail: vi.fn(),
     reloadAuthenticatedUser: vi.fn(),
     updatePassword: vi.fn(),
+    deleteCurrentUser: vi.fn(),
   }
 }
 
@@ -60,6 +61,7 @@ function renderGuards(
                 path="/conta/alterar-senha"
                 element={<h1>Alterar senha</h1>}
               />
+              <Route path="/conta/excluir" element={<h1>Excluir conta</h1>} />
             </Route>
           </Route>
         </Routes>
@@ -131,12 +133,34 @@ describe('guards de autenticação', () => {
     ).toBeInTheDocument()
   })
 
-  it.each(['/login', '/', '/verificar-email', '/conta/alterar-senha'])(
-    'aguarda o fim do loading em %s',
-    (entry) => {
-      renderGuards('loading', entry)
-      expect(screen.getByText('Verificando acesso…')).toBeInTheDocument()
-      expect(screen.queryByRole('heading')).not.toBeInTheDocument()
-    },
-  )
+  it('protege a exclusão por sessão e verificação de e-mail', () => {
+    renderGuards('unauthenticated', '/conta/excluir')
+    expect(screen.getByRole('heading', { name: 'Login' })).toBeInTheDocument()
+  })
+
+  it('redireciona usuário não verificado da exclusão', () => {
+    renderGuards('authenticated', '/conta/excluir')
+    expect(
+      screen.getByRole('heading', { name: 'Verificar e-mail' }),
+    ).toBeInTheDocument()
+  })
+
+  it('permite exclusão para usuário verificado', () => {
+    renderGuards('authenticated', '/conta/excluir', true)
+    expect(
+      screen.getByRole('heading', { name: 'Excluir conta' }),
+    ).toBeInTheDocument()
+  })
+
+  it.each([
+    '/login',
+    '/',
+    '/verificar-email',
+    '/conta/alterar-senha',
+    '/conta/excluir',
+  ])('aguarda o fim do loading em %s', (entry) => {
+    renderGuards('loading', entry)
+    expect(screen.getByText('Verificando acesso…')).toBeInTheDocument()
+    expect(screen.queryByRole('heading')).not.toBeInTheDocument()
+  })
 })

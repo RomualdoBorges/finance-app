@@ -77,4 +77,14 @@ describe('AuthService', () => {
     await expect(service.updatePassword(input)).resolves.toBeUndefined()
     expect(repository.updatePassword.mock.calls).toEqual([[input]])
   })
+
+  it('delega a exclusão da conta ao repository', async () => {
+    const repository = createAuthRepositoryMock()
+    repository.deleteCurrentUser.mockResolvedValue(undefined)
+    const service = new AuthService(repository)
+    const input = { currentPassword: 'senha-atual' }
+
+    await expect(service.deleteCurrentUser(input)).resolves.toBeUndefined()
+    expect(repository.deleteCurrentUser.mock.calls).toEqual([[input]])
+  })
 })

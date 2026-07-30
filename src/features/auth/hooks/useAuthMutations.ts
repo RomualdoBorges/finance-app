@@ -79,3 +79,15 @@ export function useUpdatePassword() {
     retry: false,
   })
 }
+
+export function useDeleteCurrentUser() {
+  const { deleteCurrentUser, signOut } = useAuth()
+
+  return useMutation({
+    mutationFn: async (input: { readonly currentPassword: string }) => {
+      await deleteCurrentUser(input)
+      await signOut()
+    },
+    retry: false,
+  })
+}

@@ -45,6 +45,12 @@ export class AuthService {
     return this.repository.updatePassword(input)
   }
 
+  deleteCurrentUser(input: {
+    readonly currentPassword: string
+  }): Promise<void> {
+    return this.repository.deleteCurrentUser(input)
+  }
+
   subscribeToAuthState(
     listener: (user: AuthenticatedUser | null) => void,
   ): () => void {

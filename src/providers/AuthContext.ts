@@ -23,6 +23,9 @@ export type AuthContextValue = {
     readonly currentPassword: string
     readonly newPassword: string
   }) => Promise<void>
+  readonly deleteCurrentUser: (input: {
+    readonly currentPassword: string
+  }) => Promise<void>
 }
 
 export const AuthContext = createContext<AuthContextValue | null>(null)

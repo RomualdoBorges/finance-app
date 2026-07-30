@@ -13,6 +13,7 @@ export function createAuthRepositoryMock(): Mocked<AuthRepository> {
     sendVerificationEmail: vi.fn<AuthRepository['sendVerificationEmail']>(),
     reloadAuthenticatedUser: vi.fn<AuthRepository['reloadAuthenticatedUser']>(),
     updatePassword: vi.fn<AuthRepository['updatePassword']>(),
+    deleteCurrentUser: vi.fn<AuthRepository['deleteCurrentUser']>(),
     subscribeToAuthState: vi.fn<AuthRepository['subscribeToAuthState']>(),
   }
 }

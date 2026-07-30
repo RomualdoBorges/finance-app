@@ -60,6 +60,7 @@ function createRepository() {
     createEmailCredential: vi.fn().mockReturnValue(emailCredential),
     reauthenticate: vi.fn().mockResolvedValue(credential),
     updatePassword: vi.fn().mockResolvedValue(undefined),
+    deleteUser: vi.fn().mockResolvedValue(undefined),
     subscribe: vi.fn().mockReturnValue(unsubscribe),
   }
 
@@ -282,6 +283,89 @@ describe('FirebaseAuthRepository', () => {
     })
     expect(operations.updatePassword.mock.calls).toHaveLength(0)
   })
+
+  it('reautentica antes de excluir a conta', async () => {
+    const { repository, operations } = createRepository()
+
+    await expect(
+      repository.deleteCurrentUser({ currentPassword: 'senha-atual' }),
+    ).resolves.toBeUndefined()
+
+    expect(operations.createEmailCredential).toHaveBeenCalledWith(
+      'pessoa@example.com',
+      'senha-atual',
+    )
+    expect(operations.reauthenticate).toHaveBeenCalledWith(
+      firebaseUser,
+      emailCredential,
+    )
+    expect(operations.deleteUser).toHaveBeenCalledWith(firebaseUser)
+    expect(operations.reauthenticate.mock.invocationCallOrder[0]).toBeLessThan(
+      operations.deleteUser.mock.invocationCallOrder[0] ?? 0,
+    )
+  })
+
+  it('não exclui a conta quando a reautenticação falha', async () => {
+    const { repository, operations } = createRepository()
+    operations.reauthenticate.mockRejectedValueOnce({
+      code: 'auth/wrong-password',
+      message: 'detalhes internos',
+    })
+
+    await expect(
+      repository.deleteCurrentUser({ currentPassword: 'incorreta' }),
+    ).rejects.toMatchObject({
+      code: 'incorrect-current-password',
+      message: 'A senha atual está incorreta.',
+    })
+    expect(operations.deleteUser).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    [
+      'auth/invalid-credential',
+      'current-credential-invalid',
+      'Não foi possível confirmar sua senha atual.',
+    ],
+    [
+      'auth/requires-recent-login',
+      'recent-login-required',
+      'Sua sessão precisa ser confirmada novamente. Informe sua senha atual e tente outra vez.',
+    ],
+    [
+      'auth/network-request-failed',
+      'account-deletion-network-unavailable',
+      'Não foi possível excluir a conta. Verifique sua conexão e tente novamente.',
+    ],
+    [
+      'auth/user-not-found',
+      'account-deletion-user-not-found',
+      'Esta conta não está mais disponível. Entre novamente.',
+    ],
+    [
+      'auth/too-many-requests',
+      'too-many-requests',
+      'Muitas tentativas foram realizadas. Aguarde alguns minutos e tente novamente.',
+    ],
+    [
+      'auth/internal-error',
+      'account-deletion-failed',
+      'Não foi possível excluir a conta. Tente novamente.',
+    ],
+  ])(
+    'sanitiza erro de exclusão %s',
+    async (firebaseCode, domainCode, message) => {
+      const { repository, operations } = createRepository()
+      operations.deleteUser.mockRejectedValueOnce({
+        code: firebaseCode,
+        message: 'senha, token e stack internos',
+      })
+
+      await expect(
+        repository.deleteCurrentUser({ currentPassword: 'senha-atual' }),
+      ).rejects.toMatchObject({ code: domainCode, message })
+    },
+  )
 
   it('rejeita sessão ausente e usuário sem e-mail com erros sanitizados', async () => {
     const { operations } = createRepository()

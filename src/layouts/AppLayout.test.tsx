@@ -29,6 +29,7 @@ function renderLayout() {
         reloadAuthenticatedUser: () =>
           Promise.reject(new Error('não utilizado')),
         updatePassword: () => Promise.reject(new Error('não utilizado')),
+        deleteCurrentUser: () => Promise.reject(new Error('não utilizado')),
       }}
     >
       <Routes>

@@ -151,3 +151,35 @@ test('protege a atualização de senha por sessão e verificação', async ({
     page.getByRole('heading', { level: 1, name: 'Verifique seu e-mail' }),
   ).toBeVisible()
 })
+
+test('valida, exclui e redireciona após encerrar a sessão', async ({ page }) => {
+  await page.goto('/conta/excluir?e2e-authenticated&e2e-email-verified')
+
+  await page.getByRole('button', { name: 'Excluir conta' }).click()
+  await expect(page.getByText('Informe sua senha atual.')).toBeVisible()
+  await expect(
+    page.getByText(
+      'Confirme que você entende que esta ação é permanente.',
+    ),
+  ).toBeVisible()
+
+  await page.getByLabel('Senha atual').fill('senha-atual-incorreta')
+  await page.getByLabel('Entendo que esta ação é permanente.').check()
+  await page.getByRole('button', { name: 'Excluir conta' }).click()
+  await expect(page.getByRole('alert')).toContainText(
+    'A senha atual está incorreta.',
+  )
+  await expect(page).toHaveURL(/\/conta\/excluir/)
+
+  await page.getByLabel('Senha atual').fill('senha-atual-valida')
+  await page.getByRole('button', { name: 'Excluir conta' }).click()
+  await expect(page).toHaveURL(/\/login$/)
+})
+
+test('protege a exclusão por sessão e verificação', async ({ page }) => {
+  await page.goto('/conta/excluir')
+  await expect(page).toHaveURL(/\/login$/)
+
+  await page.goto('/conta/excluir?e2e-authenticated')
+  await expect(page).toHaveURL(/\/verificar-email$/)
+})

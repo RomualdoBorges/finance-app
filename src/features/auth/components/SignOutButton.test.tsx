@@ -31,6 +31,7 @@ function renderButton(signOut: AuthContextValue['signOut']) {
         sendVerificationEmail: vi.fn(),
         reloadAuthenticatedUser: vi.fn(),
         updatePassword: vi.fn(),
+        deleteCurrentUser: vi.fn(),
       }}
     >
       <SignOutButton />

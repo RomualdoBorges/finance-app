@@ -1,10 +1,10 @@
 # Autenticação por e-mail e senha
 
-Esta etapa implementa cadastro, login, logout, solicitação de recuperação de senha, verificação de e-mail, atualização de senha e observação da sessão com Firebase Authentication. O login com Google foi removido do escopo do projeto.
+Esta etapa implementa cadastro, login, logout, solicitação de recuperação de senha, verificação de e-mail, atualização de senha, exclusão da conta e observação da sessão com Firebase Authentication. O login com Google foi removido do escopo do projeto.
 
 ## Arquitetura
 
-A camada visual usa hooks e não importa o Firebase. `FirebaseAuthRepository` é a única implementação da feature que chama o SDK modular (`createUserWithEmailAndPassword`, `signInWithEmailAndPassword`, `sendPasswordResetEmail`, `sendEmailVerification`, `reload`, `EmailAuthProvider.credential`, `reauthenticateWithCredential`, `updatePassword`, `signOut` e `onAuthStateChanged`). `AuthService` mantém o contrato disponível para a aplicação.
+A camada visual usa hooks e não importa o Firebase. `FirebaseAuthRepository` é a única implementação da feature que chama o SDK modular (`createUserWithEmailAndPassword`, `signInWithEmailAndPassword`, `sendPasswordResetEmail`, `sendEmailVerification`, `reload`, `EmailAuthProvider.credential`, `reauthenticateWithCredential`, `updatePassword`, `deleteUser`, `signOut` e `onAuthStateChanged`). `AuthService` mantém o contrato disponível para a aplicação.
 
 O Firebase `User` é convertido para o modelo interno `AuthenticatedUser`, que contém somente `uid`, `email`, `displayName`, `photoURL` e `emailVerified`. Credenciais completas, tokens e senha não são expostos.
 
@@ -24,6 +24,10 @@ A rota `/conta/alterar-senha` fica dentro de `ProtectedRouteGuard` e `VerifiedEm
 
 Senha atual incorreta, credencial inválida, sessão recente exigida, senha fraca, excesso de tentativas, rede e falhas desconhecidas são convertidas em mensagens de domínio. Se a reautenticação falhar, a atualização não é chamada. Após sucesso, os três campos são limpos, a confirmação permanece na mesma página e a sessão autenticada é preservada, sem refresh, logout ou navegação automática. As senhas existem somente no estado local do React Hook Form enquanto a página está montada; não são persistidas nem registradas.
 
+A rota `/conta/excluir` exige sessão autenticada, e-mail disponível e verificado. O usuário informa a senha atual e confirma explicitamente a permanência da ação. O repository reautentica e somente depois chama `deleteUser`. Após o sucesso, a mutation executa o logout existente; `onAuthStateChanged` publica a ausência de usuário e os guards redirecionam para `/login`. Em falha, os campos permanecem apenas no formulário para nova tentativa, sem navegação.
+
+`SensitiveAction`, `SensitiveOperation` e `ReauthenticationRequirement` centralizam o contrato das operações sensíveis de alteração de senha e exclusão. A implementação atual exige apenas reautenticação por senha. Os contratos permitem acrescentar uma segunda etapa futuramente, mas MFA, TOTP, SMS e APIs multifator não estão implementados.
+
 Erros técnicos são convertidos em códigos de domínio e mensagens sanitizadas em português. O login usa mensagem genérica para credenciais inválidas e a interface não mostra códigos, stacks ou detalhes internos.
 
 O logout percorre repository → service → hook de mutation. Em caso de sucesso, `onAuthStateChanged` publica a sessão sem usuário e o `ProtectedRouteGuard` redireciona para `/login`; o botão não navega manualmente. Em caso de falha, a sessão e a rota protegida são preservadas, o botão é reabilitado e uma mensagem sanitizada é anunciada.
@@ -40,4 +44,4 @@ Testes unitários e de integração usam mocks do repository e não acessam rede
 
 Senhas permanecem somente no estado do React Hook Form e não são persistidas em URL, storage, Zustand ou logs. Nenhum token é exposto e nenhum acesso ao Firestore foi adicionado.
 
-Continuam pendentes: confirmação de redefinição por código, exclusão de usuário, MFA, documento do usuário, grupos e grupo ativo/padrão. Nenhuma regra de negócio financeira, Firestore Rule ou autorização por papel foi adicionada nesta etapa.
+Continuam pendentes: confirmação de redefinição por código, MFA, documento do usuário, grupos e grupo ativo/padrão. A exclusão remove somente a identidade do Firebase Authentication, pois ainda não existem documento do usuário ou dados financeiros. Nenhuma regra de negócio financeira, Firestore Rule ou autorização por papel foi adicionada nesta etapa.

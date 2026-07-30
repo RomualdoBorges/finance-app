@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  deleteCurrentUserSchema,
   loginSchema,
   passwordResetSchema,
   registerSchema,
@@ -136,5 +137,20 @@ describe('schemas de autenticação', () => {
         expectedMessage,
       )
     }
+  })
+
+  it('exige senha e confirmação para excluir a conta', () => {
+    expect(
+      deleteCurrentUserSchema.safeParse({
+        currentPassword: 'senha-atual',
+        confirmation: true,
+      }).success,
+    ).toBe(true)
+    expect(
+      deleteCurrentUserSchema.safeParse({
+        currentPassword: '',
+        confirmation: false,
+      }).success,
+    ).toBe(false)
   })
 })

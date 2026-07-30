@@ -18,6 +18,10 @@ export type AuthErrorCode =
   | 'password-update-weak-password'
   | 'password-update-network-unavailable'
   | 'password-update-failed'
+  | 'account-deletion-user-not-authenticated'
+  | 'account-deletion-user-not-found'
+  | 'account-deletion-network-unavailable'
+  | 'account-deletion-failed'
   | 'unknown'
 
 const authErrorMessages: Record<AuthErrorCode, string> = {
@@ -50,6 +54,14 @@ const authErrorMessages: Record<AuthErrorCode, string> = {
     'Não foi possível atualizar a senha. Verifique sua conexão e tente novamente.',
   'password-update-failed':
     'Não foi possível atualizar a senha. Tente novamente.',
+  'account-deletion-user-not-authenticated':
+    'Não foi possível identificar a sessão atual. Entre novamente.',
+  'account-deletion-user-not-found':
+    'Esta conta não está mais disponível. Entre novamente.',
+  'account-deletion-network-unavailable':
+    'Não foi possível excluir a conta. Verifique sua conexão e tente novamente.',
+  'account-deletion-failed':
+    'Não foi possível excluir a conta. Tente novamente.',
   unknown: 'Não foi possível concluir a autenticação. Tente novamente.',
 }
 

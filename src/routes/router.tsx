@@ -6,6 +6,7 @@ import { RegisterPage } from '../features/auth/pages/RegisterPage'
 import { PasswordResetPage } from '../features/auth/pages/PasswordResetPage'
 import { EmailVerificationPage } from '../features/auth/pages/EmailVerificationPage'
 import { UpdatePasswordPage } from '../features/auth/pages/UpdatePasswordPage'
+import { DeleteCurrentUserPage } from '../features/auth/pages/DeleteCurrentUserPage'
 import { NotFoundPage } from '../features/not-found/pages/NotFoundPage'
 import { AppLayout } from '../layouts/AppLayout'
 import { AuthLayout } from '../layouts/AuthLayout'
@@ -51,6 +52,10 @@ export const router = createBrowserRouter([
               {
                 path: routePaths.updatePassword,
                 element: <UpdatePasswordPage />,
+              },
+              {
+                path: routePaths.deleteAccount,
+                element: <DeleteCurrentUserPage />,
               },
               { path: '*', element: <NotFoundPage /> },
             ],

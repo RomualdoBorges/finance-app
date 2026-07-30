@@ -24,6 +24,8 @@ export interface AuthRepository {
     readonly newPassword: string
   }): Promise<void>
 
+  deleteCurrentUser(input: { readonly currentPassword: string }): Promise<void>
+
   subscribeToAuthState(
     listener: (user: AuthenticatedUser | null) => void,
   ): () => void

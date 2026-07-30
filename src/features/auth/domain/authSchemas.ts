@@ -67,7 +67,17 @@ export const updatePasswordSchema = z
     }
   })
 
+export const deleteCurrentUserSchema = z.object({
+  currentPassword: z.string().min(1, 'Informe sua senha atual.'),
+  confirmation: z.boolean().refine((value) => value, {
+    message: 'Confirme que você entende que esta ação é permanente.',
+  }),
+})
+
 export type LoginFormValues = z.infer<typeof loginSchema>
 export type PasswordResetFormValues = z.infer<typeof passwordResetSchema>
 export type RegisterFormValues = z.infer<typeof registerSchema>
 export type UpdatePasswordFormValues = z.infer<typeof updatePasswordSchema>
+export type DeleteCurrentUserFormValues = z.infer<
+  typeof deleteCurrentUserSchema
+>

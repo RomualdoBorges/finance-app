@@ -45,6 +45,7 @@ export function AuthProvider({ children, service }: AuthProviderProps) {
         return refreshedUser
       },
       updatePassword: (input) => service.updatePassword(input),
+      deleteCurrentUser: (input) => service.deleteCurrentUser(input),
     }),
     [service, status, user],
   )

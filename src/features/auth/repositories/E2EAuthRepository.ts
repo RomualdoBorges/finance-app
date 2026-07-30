@@ -53,6 +53,33 @@ export class E2EAuthRepository implements AuthRepository {
     return Promise.resolve()
   }
 
+  deleteCurrentUser(input: {
+    readonly currentPassword: string
+  }): Promise<void> {
+    if (this.user === null) {
+      return Promise.reject(
+        new AuthError('account-deletion-user-not-authenticated'),
+      )
+    }
+
+    if (input.currentPassword === 'sem-rede') {
+      return Promise.reject(
+        new AuthError('account-deletion-network-unavailable'),
+      )
+    }
+
+    if (input.currentPassword === 'usuario-inexistente') {
+      return Promise.reject(new AuthError('account-deletion-user-not-found'))
+    }
+
+    if (input.currentPassword !== 'senha-atual-valida') {
+      return Promise.reject(new AuthError('incorrect-current-password'))
+    }
+
+    this.user = null
+    return Promise.resolve()
+  }
+
   subscribeToAuthState(
     listener: (user: AuthenticatedUser | null) => void,
   ): () => void {
