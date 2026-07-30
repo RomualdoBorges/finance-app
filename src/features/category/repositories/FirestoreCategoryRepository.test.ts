@@ -20,6 +20,7 @@ const data = {
   status: 'active',
   parentCategoryId: null,
   icon: 'house',
+  usageCount: 0,
   createdBy: 'user-1',
   createdAt: timestamp,
   updatedAt: timestamp,
@@ -42,8 +43,11 @@ function operations(
     }),
     listCategories: vi.fn().mockResolvedValue([]),
     setCategory: vi.fn().mockResolvedValue(undefined),
+    updateCategory: vi.fn().mockResolvedValue(undefined),
+    deleteCategory: vi.fn().mockResolvedValue(undefined),
     createBatch: vi.fn().mockReturnValue({
       set: vi.fn(),
+      update: vi.fn(),
       commit: vi.fn().mockResolvedValue(undefined),
     }),
     serverTimestamp: vi.fn().mockReturnValue({ serverTimestamp: true }),
@@ -95,6 +99,7 @@ describe('FirestoreCategoryRepository', () => {
       status: 'active',
       parentCategoryId: null,
       icon: null,
+      usageCount: 0,
       createdBy: 'user-1',
     }
 
@@ -111,6 +116,56 @@ describe('FirestoreCategoryRepository', () => {
         updatedAt: { serverTimestamp: true },
       }),
     )
+  })
+
+  it('edita somente campos mutáveis e atualiza updatedAt no servidor', async () => {
+    const updateCategory = vi.fn().mockResolvedValue(undefined)
+    const categoryOperations = operations({ updateCategory })
+    const repository = new FirestoreCategoryRepository(
+      {} as Firestore,
+      categoryOperations,
+    )
+    await repository.update('group-1', 'custom-id', {
+      name: 'Casa',
+      normalizedName: 'casa',
+      type: 'expense',
+      parentCategoryId: null,
+      icon: 'house',
+    })
+    expect(updateCategory).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        name: 'Casa',
+        updatedAt: { serverTimestamp: true },
+      }),
+    )
+    expect(updateCategory.mock.calls[0]?.[1]).not.toHaveProperty('createdAt')
+  })
+
+  it('arquiva múltiplas categorias no mesmo batch e exclui por referência', async () => {
+    const update = vi.fn()
+    const commit = vi.fn().mockResolvedValue(undefined)
+    const categoryOperations = operations({
+      createBatch: vi.fn().mockReturnValue({
+        set: vi.fn(),
+        update,
+        commit,
+      }),
+    })
+    const repository = new FirestoreCategoryRepository(
+      {} as Firestore,
+      categoryOperations,
+    )
+    await repository.setArchived('group-1', ['root', 'child'], true)
+    expect(update).toHaveBeenCalledTimes(2)
+    expect(update).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ status: 'archived' }),
+    )
+    expect(commit).toHaveBeenCalledOnce()
+
+    await repository.delete('group-1', 'child')
+    expect(categoryOperations.deleteCategory).toHaveBeenCalledOnce()
   })
 
   it('cria em lote somente defaults ausentes e usa IDs determinísticos', async () => {

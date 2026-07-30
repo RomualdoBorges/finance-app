@@ -15,6 +15,7 @@ type CategoriesHookResult = {
 const useCategoriesMock = vi.fn<() => CategoriesHookResult>()
 const createCategoryMock =
   vi.fn<(input: CreateCustomCategoryInput) => Promise<unknown>>()
+const archiveCategoryMock = vi.fn().mockResolvedValue(undefined)
 
 vi.mock('../hooks/useCategories', () => ({
   useCategories: () => useCategoriesMock(),
@@ -24,6 +25,18 @@ vi.mock('../hooks/useCreateCategory', () => ({
   useCreateCategory: () => ({
     createCategory: createCategoryMock,
     creating: false,
+    error: null,
+    reset: vi.fn(),
+  }),
+}))
+
+vi.mock('../hooks/useCategoryMutations', () => ({
+  useCategoryMutations: () => ({
+    updateCategory: vi.fn(),
+    archiveCategory: archiveCategoryMock,
+    restoreCategory: vi.fn(),
+    deleteCategory: vi.fn(),
+    pending: false,
     error: null,
     reset: vi.fn(),
   }),
@@ -41,6 +54,7 @@ const categories: readonly Category[] = [
     status: 'active',
     parentCategoryId: null,
     icon: 'house',
+    usageCount: 0,
     createdBy: 'user-1',
     createdAt: timestamp,
     updatedAt: timestamp,
@@ -55,6 +69,7 @@ const categories: readonly Category[] = [
     status: 'active',
     parentCategoryId: 'expense-housing',
     icon: null,
+    usageCount: 0,
     createdBy: 'user-1',
     createdAt: timestamp,
     updatedAt: timestamp,
@@ -69,6 +84,7 @@ const categories: readonly Category[] = [
     status: 'active',
     parentCategoryId: null,
     icon: 'wallet-cards',
+    usageCount: 0,
     createdBy: 'user-1',
     createdAt: timestamp,
     updatedAt: timestamp,
@@ -140,5 +156,40 @@ describe('CategoriesPage', () => {
       screen.getByRole('button', { name: 'Tentar novamente' }),
     )
     expect(refresh).toHaveBeenCalledOnce()
+  })
+
+  it('diferencia arquivada e explica por que categoria usada não é excluída', () => {
+    useCategoriesMock.mockReturnValue({
+      categories: [
+        {
+          ...categories[0]!,
+          status: 'archived',
+          usageCount: 2,
+        },
+      ],
+      loading: false,
+      error: null,
+      refresh: () => Promise.resolve(),
+    })
+    render(<CategoriesPage />)
+    expect(screen.getByText(/Arquivada — mantida/)).toBeInTheDocument()
+    expect(screen.getByText(/Já utilizada/)).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Excluir' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'Restaurar' }),
+    ).toBeInTheDocument()
+  })
+
+  it('confirma antes de arquivar', async () => {
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    render(<CategoriesPage />)
+    await userEvent.click(
+      screen.getAllByRole('button', { name: 'Arquivar' })[0]!,
+    )
+    expect(confirm).toHaveBeenCalledOnce()
+    expect(archiveCategoryMock).toHaveBeenCalled()
+    confirm.mockRestore()
   })
 })

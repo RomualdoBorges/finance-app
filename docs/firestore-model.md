@@ -84,14 +84,16 @@ O documento fica em
 `financialGroups/{groupId}/categories/{categoryId}` e contém `groupId`, `name`,
 `normalizedName`, `type` (`income` ou `expense`), `origin` (`default` ou
 `custom`), `status: "active"`, `parentCategoryId`, `icon`, `createdBy`,
-`createdAt` e `updatedAt`. Datas persistidas são `Firestore Timestamp`.
+`createdAt` e `updatedAt`. `usageCount` é um inteiro protegido, iniciado em zero,
+que representa vínculos históricos e sustenta a decisão entre exclusão e
+arquivamento. Datas persistidas são `Firestore Timestamp`.
 
 Categorias raiz usam `parentCategoryId: null`. Subcategorias apontam para uma
 raiz do mesmo grupo e tipo; profundidade maior que um não é aceita. Categorias
 padrão têm IDs determinísticos em inglês e são provisionadas de forma
-idempotente, somente para documentos ausentes. Edição e arquivamento serão
-contratados no próximo item do milestone. Detalhes de domínio, segurança e
-limitação de unicidade estão em `docs/categories.md`.
+idempotente, somente para documentos ausentes. Categorias podem estar `active`
+ou `archived`; as arquivadas permanecem disponíveis para histórico. Detalhes de
+domínio, segurança e limitação de unicidade estão em `docs/categories.md`.
 
 ### `transactions` — MVP; tipos adicionais nas fases seguintes
 

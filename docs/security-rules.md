@@ -18,9 +18,12 @@ O acesso a `/financialGroups/{groupId}` e subcoleções exige documento ativo em
 
 Em `/financialGroups/{groupId}/categories/{categoryId}`, membros ativos podem
 ler e criar. A criação valida o conjunto exato de campos, grupo, autor,
-enumerações, timestamps do servidor e, quando houver, pai raiz do mesmo tipo
-usando `getAfter`. Atualização e exclusão permanecem bloqueadas no primeiro item
-do Milestone 2.
+enumerações, `usageCount: 0`, timestamps do servidor e, quando houver, pai raiz
+ativo do mesmo tipo usando `getAfter`. Atualizações preservam grupo, origem,
+criador, criação e contador de uso; categorias padrão preservam também tipo e
+pai. Exclusão é aceita somente para categoria personalizada com contador de uso
+zero e que seja subcategoria; raízes são arquivadas porque as Rules não podem
+provar a ausência de filhas por consulta reversa.
 
 Funções conceituais das Rules:
 

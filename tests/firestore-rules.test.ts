@@ -83,6 +83,7 @@ function categoryData(
     status: 'active',
     parentCategoryId: null,
     icon: 'house',
+    usageCount: 0,
     createdBy: userId,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
@@ -540,18 +541,94 @@ describe('Firestore Rules de categorias', () => {
     }
   })
 
-  it('bloqueia update e delete mesmo para owner', async () => {
+  it('permite editar campos personalizáveis e preserva campos protegidos', async () => {
     await seedPersonalGroup('group-a', 'user-1')
     const firestore = environment.authenticatedContext('user-1').firestore()
     const reference = categoryRef(firestore, 'group-a', 'expense-root')
     await setDoc(reference, categoryData('group-a', 'user-1'))
-    await assertFails(
+    await assertSucceeds(
       updateDoc(reference, {
         name: 'Casa',
         normalizedName: 'casa',
         updatedAt: serverTimestamp(),
       }),
     )
-    await assertFails(deleteDoc(reference))
+    await assertFails(
+      updateDoc(reference, {
+        type: 'income',
+        updatedAt: serverTimestamp(),
+      }),
+    )
+    await assertFails(
+      updateDoc(reference, {
+        createdBy: 'user-2',
+        updatedAt: serverTimestamp(),
+      }),
+    )
+  })
+
+  it('permite arquivar em batch, bloqueia restauração com pai arquivado e depois restaura', async () => {
+    await seedPersonalGroup('group-a', 'user-1')
+    const firestore = environment.authenticatedContext('user-1').firestore()
+    const root = categoryRef(firestore, 'group-a', 'root')
+    const child = categoryRef(firestore, 'group-a', 'child')
+    const creation = writeBatch(firestore)
+    creation.set(root, categoryData('group-a', 'user-1'))
+    creation.set(
+      child,
+      categoryData('group-a', 'user-1', {
+        name: 'Aluguel',
+        normalizedName: 'aluguel',
+        parentCategoryId: 'root',
+      }),
+    )
+    await creation.commit()
+
+    const archive = writeBatch(firestore)
+    archive.update(root, { status: 'archived', updatedAt: serverTimestamp() })
+    archive.update(child, { status: 'archived', updatedAt: serverTimestamp() })
+    await assertSucceeds(archive.commit())
+    await assertFails(
+      updateDoc(child, { status: 'active', updatedAt: serverTimestamp() }),
+    )
+    await assertSucceeds(
+      updateDoc(root, { status: 'active', updatedAt: serverTimestamp() }),
+    )
+    await assertSucceeds(
+      updateDoc(child, { status: 'active', updatedAt: serverTimestamp() }),
+    )
+  })
+
+  it('exclui somente categoria personalizada não usada', async () => {
+    await seedPersonalGroup('group-a', 'user-1')
+    const firestore = environment.authenticatedContext('user-1').firestore()
+    const custom = categoryRef(firestore, 'group-a', 'custom')
+    const defaultCategory = categoryRef(firestore, 'group-a', 'default')
+    const root = categoryRef(firestore, 'group-a', 'root')
+    await setDoc(root, categoryData('group-a', 'user-1'))
+    await setDoc(
+      custom,
+      categoryData('group-a', 'user-1', {
+        origin: 'custom',
+        parentCategoryId: 'root',
+      }),
+    )
+    await setDoc(defaultCategory, categoryData('group-a', 'user-1'))
+    await assertSucceeds(deleteDoc(custom))
+    await assertFails(deleteDoc(defaultCategory))
+
+    const used = categoryRef(firestore, 'group-a', 'used')
+    await environment.withSecurityRulesDisabled(async (context) => {
+      await setDoc(categoryRef(context.firestore(), 'group-a', 'used'), {
+        ...categoryData('group-a', 'user-1', {
+          origin: 'custom',
+          usageCount: 1,
+          parentCategoryId: 'root',
+        }),
+        createdAt: Timestamp.fromDate(new Date('2026-01-01T00:00:00Z')),
+        updatedAt: Timestamp.fromDate(new Date('2026-01-01T00:00:00Z')),
+      })
+    })
+    await assertFails(deleteDoc(used))
   })
 })

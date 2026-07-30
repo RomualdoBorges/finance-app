@@ -38,7 +38,7 @@ export function UpdatePasswordPage() {
       </div>
 
       <Link
-        className="mt-6 inline-flex min-h-10 items-center gap-2 rounded-md px-1 py-2 text-sm font-semibold text-primary underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
+        className="mt-6 inline-flex min-h-10 items-center gap-2 rounded-md px-1 py-2 text-sm font-semibold text-primary underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
         to={routePaths.home}
       >
         <ArrowLeft aria-hidden="true" size={18} />

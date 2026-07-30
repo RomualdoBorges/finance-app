@@ -1,36 +1,38 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as Dialog from '@radix-ui/react-dialog'
-import { X } from 'lucide-react'
+import { Pencil, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
 import { z } from 'zod'
 
 import { Button } from '../../../components/ui/Button'
-import type { Category, CreateCustomCategoryInput } from '../domain/Category'
+import type { Category, UpdateCategoryInput } from '../domain/Category'
 import { CategoryError } from '../domain/CategoryError'
-import { createCustomCategorySchema } from '../domain/categorySchemas'
+import { updateCategorySchema } from '../domain/categorySchemas'
 
-type FormValues = z.input<typeof createCustomCategorySchema>
+type FormValues = z.input<typeof updateCategorySchema>
 
-type CreateCategoryDialogProps = {
-  readonly categories: readonly Category[]
-  readonly creating: boolean
-  readonly onCreate: (input: CreateCustomCategoryInput) => Promise<unknown>
-}
-
-export function CreateCategoryDialog({
+export function EditCategoryDialog({
+  category,
   categories,
-  creating,
-  onCreate,
-}: CreateCategoryDialogProps) {
+  pending,
+  onUpdate,
+}: {
+  readonly category: Category
+  readonly categories: readonly Category[]
+  readonly pending: boolean
+  readonly onUpdate: (input: UpdateCategoryInput) => Promise<unknown>
+}) {
   const [open, setOpen] = useState(false)
-  const rootCategories = useMemo(
+  const roots = useMemo(
     () =>
       categories.filter(
-        ({ parentCategoryId, status }) =>
-          parentCategoryId === null && status === 'active',
+        (item) =>
+          item.id !== category.id &&
+          item.parentCategoryId === null &&
+          item.status === 'active',
       ),
-    [categories],
+    [categories, category.id],
   )
   const {
     register,
@@ -41,19 +43,17 @@ export function CreateCategoryDialog({
     control,
     formState: { errors },
   } = useForm<FormValues>({
-    resolver: zodResolver(createCustomCategorySchema),
+    resolver: zodResolver(updateCategorySchema),
     defaultValues: {
-      name: '',
-      type: 'expense',
-      parentCategoryId: null,
-      icon: null,
+      categoryId: category.id,
+      name: category.name,
+      type: category.type,
+      parentCategoryId: category.parentCategoryId,
+      icon: category.icon,
     },
   })
   const parentCategoryId = useWatch({ control, name: 'parentCategoryId' })
-  const selectedParent = rootCategories.find(
-    ({ id }) => id === parentCategoryId,
-  )
-
+  const selectedParent = roots.find(({ id }) => id === parentCategoryId)
   useEffect(() => {
     if (selectedParent !== undefined) {
       setValue('type', selectedParent.type, { shouldValidate: true })
@@ -62,34 +62,37 @@ export function CreateCategoryDialog({
 
   const submit = handleSubmit(async (values) => {
     try {
-      await onCreate({
+      await onUpdate({
+        categoryId: category.id,
         name: values.name,
         type: values.type,
         parentCategoryId: values.parentCategoryId ?? null,
-        icon: null,
+        icon: values.icon ?? null,
       })
-      reset()
       setOpen(false)
     } catch (error) {
       setError('root', {
         message:
           error instanceof CategoryError
             ? error.message
-            : 'Não foi possível criar a categoria.',
+            : 'Não foi possível editar a categoria.',
       })
     }
   })
 
   return (
     <Dialog.Root
-      onOpenChange={(nextOpen) => {
-        setOpen(nextOpen)
-        if (!nextOpen) reset()
-      }}
       open={open}
+      onOpenChange={(next) => {
+        setOpen(next)
+        if (!next) reset()
+      }}
     >
       <Dialog.Trigger asChild>
-        <Button>Adicionar categoria</Button>
+        <Button variant="secondary">
+          <Pencil aria-hidden="true" size={16} />
+          Editar
+        </Button>
       </Dialog.Trigger>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-40 bg-black/50" />
@@ -97,28 +100,27 @@ export function CreateCategoryDialog({
           <div className="flex items-start justify-between gap-4">
             <div>
               <Dialog.Title className="text-lg font-semibold text-foreground">
-                Nova categoria
+                Editar categoria
               </Dialog.Title>
               <Dialog.Description className="mt-1 text-sm text-muted-foreground">
-                Crie uma categoria principal ou uma subcategoria.
+                {category.origin === 'default'
+                  ? 'Em categorias padrão, somente nome e ícone podem ser alterados.'
+                  : 'Atualize os dados personalizáveis da categoria.'}
               </Dialog.Description>
             </div>
-            <Dialog.Close
-              aria-label="Fechar"
-              className="rounded-md p-2 text-muted-foreground hover:bg-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus-ring"
-            >
+            <Dialog.Close aria-label="Fechar" className="rounded-md p-2">
               <X aria-hidden="true" size={18} />
             </Dialog.Close>
           </div>
-
           <form
             className="mt-6 space-y-4"
             onSubmit={(event) => void submit(event)}
           >
-            <label className="block text-sm font-medium text-foreground">
+            <input type="hidden" {...register('categoryId')} />
+            <label className="block text-sm font-medium">
               Nome
               <input
-                className="mt-1 min-h-10 w-full rounded-md border border-border bg-background px-3 text-foreground"
+                className="mt-1 min-h-10 w-full rounded-md border border-border bg-background px-3"
                 {...register('name')}
               />
               {errors.name ? (
@@ -127,56 +129,49 @@ export function CreateCategoryDialog({
                 </span>
               ) : null}
             </label>
-
-            <label className="block text-sm font-medium text-foreground">
+            <label className="block text-sm font-medium">
               Categoria principal (opcional)
               <select
-                className="mt-1 min-h-10 w-full rounded-md border border-border bg-background px-3 text-foreground"
+                className="mt-1 min-h-10 w-full rounded-md border border-border bg-background px-3 disabled:opacity-60"
+                disabled={category.origin === 'default'}
                 {...register('parentCategoryId', {
                   setValueAs: (value: unknown) => (value === '' ? null : value),
                 })}
               >
                 <option value="">Nenhuma — categoria principal</option>
-                {rootCategories.map((category) => (
-                  <option key={category.id} value={category.id}>
-                    {category.name} (
-                    {category.type === 'expense' ? 'despesa' : 'receita'})
+                {roots.map((root) => (
+                  <option key={root.id} value={root.id}>
+                    {root.name}
                   </option>
                 ))}
               </select>
             </label>
-
-            <label className="block text-sm font-medium text-foreground">
+            <label className="block text-sm font-medium">
               Tipo
               <select
-                className="mt-1 min-h-10 w-full rounded-md border border-border bg-background px-3 text-foreground disabled:opacity-60"
-                disabled={selectedParent !== undefined}
+                className="mt-1 min-h-10 w-full rounded-md border border-border bg-background px-3 disabled:opacity-60"
+                disabled={
+                  category.origin === 'default' || selectedParent !== undefined
+                }
                 {...register('type')}
               >
                 <option value="expense">Despesa</option>
                 <option value="income">Receita</option>
               </select>
-              {selectedParent !== undefined ? (
-                <span className="mt-1 block text-xs text-muted-foreground">
-                  O tipo é herdado da categoria principal.
-                </span>
-              ) : null}
             </label>
-
             {errors.root ? (
-              <p className="text-sm text-danger" role="alert">
+              <p role="alert" className="text-sm text-danger">
                 {errors.root.message}
               </p>
             ) : null}
-
-            <div className="flex justify-end gap-3 pt-2">
+            <div className="flex justify-end gap-3">
               <Dialog.Close asChild>
-                <Button disabled={creating} variant="secondary">
+                <Button disabled={pending} variant="secondary">
                   Cancelar
                 </Button>
               </Dialog.Close>
-              <Button disabled={creating} type="submit">
-                {creating ? 'Salvando…' : 'Salvar categoria'}
+              <Button disabled={pending} type="submit">
+                {pending ? 'Salvando…' : 'Salvar alterações'}
               </Button>
             </div>
           </form>

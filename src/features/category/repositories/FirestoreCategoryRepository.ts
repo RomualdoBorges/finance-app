@@ -5,6 +5,8 @@ import {
   getDocs,
   serverTimestamp,
   setDoc,
+  updateDoc,
+  deleteDoc,
   writeBatch,
   type DocumentData,
   type DocumentReference,
@@ -15,9 +17,11 @@ import {
 import {
   ACTIVE_CATEGORY_STATUS,
   CATEGORY_ORIGINS,
+  CATEGORY_STATUSES,
   CATEGORY_TYPES,
   type Category,
   type PersistCategoryInput,
+  type PersistCategoryUpdate,
 } from '../domain/Category'
 import { CategoryError, type CategoryErrorCode } from '../domain/CategoryError'
 import type {
@@ -33,6 +37,7 @@ type CategorySnapshot = {
 
 type CategoryBatch = {
   set(reference: unknown, data: Readonly<Record<string, unknown>>): void
+  update(reference: unknown, data: Readonly<Record<string, unknown>>): void
   commit(): Promise<void>
 }
 
@@ -58,6 +63,11 @@ export type FirestoreCategoryOperations = {
     reference: unknown,
     data: Readonly<Record<string, unknown>>,
   ) => Promise<void>
+  readonly updateCategory: (
+    reference: unknown,
+    data: Readonly<Record<string, unknown>>,
+  ) => Promise<void>
+  readonly deleteCategory: (reference: unknown) => Promise<void>
   readonly createBatch: (firestore: Firestore) => CategoryBatch
   readonly serverTimestamp: () => unknown
 }
@@ -91,6 +101,10 @@ const defaultOperations: FirestoreCategoryOperations = {
   },
   setCategory: (reference, data) =>
     setDoc(reference as DocumentReference<DocumentData>, data),
+  updateCategory: (reference, data) =>
+    updateDoc(reference as DocumentReference<DocumentData>, data),
+  deleteCategory: (reference) =>
+    deleteDoc(reference as DocumentReference<DocumentData>),
   createBatch: (firestore) => writeBatch(firestore),
   serverTimestamp,
 }
@@ -152,6 +166,7 @@ export function mapCategorySnapshot(
   const parentCategoryId = data['parentCategoryId']
   const icon = data['icon']
   const createdBy = data['createdBy']
+  const usageCount = data['usageCount'] ?? 0
 
   if (
     snapshot.id.length === 0 ||
@@ -160,10 +175,15 @@ export function mapCategorySnapshot(
     typeof normalizedName !== 'string' ||
     !CATEGORY_TYPES.includes(type as (typeof CATEGORY_TYPES)[number]) ||
     !CATEGORY_ORIGINS.includes(origin as (typeof CATEGORY_ORIGINS)[number]) ||
-    data['status'] !== ACTIVE_CATEGORY_STATUS ||
+    !CATEGORY_STATUSES.includes(
+      data['status'] as (typeof CATEGORY_STATUSES)[number],
+    ) ||
     !isNullableString(parentCategoryId) ||
     !isNullableString(icon) ||
     typeof createdBy !== 'string' ||
+    typeof usageCount !== 'number' ||
+    !Number.isInteger(usageCount) ||
+    usageCount < 0 ||
     createdAt === null ||
     updatedAt === null
   ) {
@@ -177,9 +197,10 @@ export function mapCategorySnapshot(
     normalizedName,
     type: type as Category['type'],
     origin: origin as Category['origin'],
-    status: ACTIVE_CATEGORY_STATUS,
+    status: data['status'] as Category['status'],
     parentCategoryId,
     icon,
+    usageCount,
     createdBy,
     createdAt,
     updatedAt,
@@ -205,6 +226,7 @@ function persistedData(
     status: input.status,
     parentCategoryId: input.parentCategoryId,
     icon: input.icon,
+    usageCount: input.usageCount,
     createdBy: input.createdBy,
     createdAt: timestamp,
     updatedAt: timestamp,
@@ -282,6 +304,76 @@ export class FirestoreCategoryRepository implements CategoryRepository {
     }
   }
 
+  async update(
+    groupId: string,
+    categoryId: string,
+    input: PersistCategoryUpdate,
+  ): Promise<Category> {
+    assertIdentifier(groupId)
+    assertIdentifier(categoryId)
+    try {
+      const reference = this.operations.categoryReference(
+        this.firestore,
+        groupId,
+        categoryId,
+      )
+      await this.operations.updateCategory(reference, {
+        ...input,
+        updatedAt: this.operations.serverTimestamp(),
+      })
+      const category = mapCategorySnapshot(
+        groupId,
+        await this.operations.getCategory(reference),
+      )
+      if (category === null) throw new CategoryError('invalid-data')
+      return category
+    } catch (error) {
+      throw mapCategoryError(error)
+    }
+  }
+
+  async setArchived(
+    groupId: string,
+    categoryIds: readonly string[],
+    archived: boolean,
+  ): Promise<void> {
+    assertIdentifier(groupId)
+    categoryIds.forEach(assertIdentifier)
+    if (categoryIds.length === 0) return
+    try {
+      const batch = this.operations.createBatch(this.firestore)
+      const timestamp = this.operations.serverTimestamp()
+      for (const categoryId of categoryIds) {
+        batch.update(
+          this.operations.categoryReference(
+            this.firestore,
+            groupId,
+            categoryId,
+          ),
+          {
+            status: archived ? 'archived' : 'active',
+            updatedAt: timestamp,
+          },
+        )
+      }
+      await batch.commit()
+    } catch (error) {
+      throw mapCategoryError(error)
+    }
+  }
+
+  async delete(groupId: string, categoryId: string): Promise<void> {
+    assertIdentifier(groupId)
+    assertIdentifier(categoryId)
+    try {
+      await this.operations.deleteCategory(
+        this.operations.categoryReference(this.firestore, groupId, categoryId),
+      )
+    } catch (error) {
+      throw mapCategoryError(error)
+    }
+  }
+
   async ensureDefaults({
     groupId,
     userId,
@@ -315,6 +407,7 @@ export class FirestoreCategoryRepository implements CategoryRepository {
               groupId,
               origin: 'default',
               status: ACTIVE_CATEGORY_STATUS,
+              usageCount: 0,
               createdBy: userId,
             },
             timestamp,

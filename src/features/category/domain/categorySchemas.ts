@@ -36,3 +36,11 @@ export const createCustomCategorySchema = z.object({
     .nullish()
     .transform((value) => value ?? null),
 })
+
+export const updateCategorySchema = createCustomCategorySchema.extend({
+  categoryId: identifierSchema,
+})
+
+export const categoryActionSchema = z.object({
+  categoryId: identifierSchema,
+})

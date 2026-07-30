@@ -1,4 +1,8 @@
-import type { Category, PersistCategoryInput } from '../domain/Category'
+import type {
+  Category,
+  PersistCategoryInput,
+  PersistCategoryUpdate,
+} from '../domain/Category'
 import type {
   CategoryRepository,
   EnsureDefaultCategoriesInput,
@@ -35,6 +39,43 @@ export class E2ECategoryRepository implements CategoryRepository {
     return Promise.resolve(category)
   }
 
+  update(
+    groupId: string,
+    categoryId: string,
+    input: PersistCategoryUpdate,
+  ): Promise<Category> {
+    const key = `${groupId}:${categoryId}`
+    const current = this.categories.get(key)
+    if (current === undefined) return Promise.reject(new Error('not found'))
+    const updated = { ...current, ...input, updatedAt: new Date() }
+    this.categories.set(key, updated)
+    return Promise.resolve(updated)
+  }
+
+  setArchived(
+    groupId: string,
+    categoryIds: readonly string[],
+    archived: boolean,
+  ): Promise<void> {
+    for (const categoryId of categoryIds) {
+      const key = `${groupId}:${categoryId}`
+      const current = this.categories.get(key)
+      if (current !== undefined) {
+        this.categories.set(key, {
+          ...current,
+          status: archived ? 'archived' : 'active',
+          updatedAt: new Date(),
+        })
+      }
+    }
+    return Promise.resolve()
+  }
+
+  delete(groupId: string, categoryId: string): Promise<void> {
+    this.categories.delete(`${groupId}:${categoryId}`)
+    return Promise.resolve()
+  }
+
   ensureDefaults({
     groupId,
     userId,
@@ -49,6 +90,7 @@ export class E2ECategoryRepository implements CategoryRepository {
           groupId,
           origin: 'default',
           status: 'active',
+          usageCount: 0,
           createdBy: userId,
           createdAt: timestamp,
           updatedAt: timestamp,

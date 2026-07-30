@@ -22,6 +22,7 @@ function category(
     status: ACTIVE_CATEGORY_STATUS,
     parentCategoryId: null,
     icon: null,
+    usageCount: 0,
     createdBy: 'user-1',
     createdAt: timestamp,
     updatedAt: timestamp,
@@ -43,16 +44,36 @@ function setup(initial: readonly Category[] = []) {
     return Promise.resolve(created)
   })
   const ensureDefaults = vi.fn(() => Promise.resolve())
+  const update = vi.fn(
+    (
+      _groupId: string,
+      categoryId: string,
+      input: Parameters<CategoryRepository['update']>[2],
+    ) => {
+      const index = values.findIndex(({ id }) => id === categoryId)
+      const updated = { ...values[index], ...input } as Category
+      values[index] = updated
+      return Promise.resolve(updated)
+    },
+  )
+  const setArchived = vi.fn(() => Promise.resolve())
+  const remove = vi.fn(() => Promise.resolve())
   const repository: CategoryRepository = {
     listByGroup,
     getById: vi.fn(),
     create,
+    update,
+    setArchived,
+    delete: remove,
     ensureDefaults,
   }
   return {
     create,
     ensureDefaults,
     listByGroup,
+    update,
+    setArchived,
+    remove,
     service: new CategoryService(repository),
   }
 }
@@ -185,5 +206,164 @@ describe('CategoryService', () => {
         { name: 'Educação', type: 'income' },
       ),
     ).resolves.toMatchObject({ type: 'income' })
+  })
+
+  it('edita categoria personalizada preservando campos protegidos', async () => {
+    const current = category({
+      id: 'custom',
+      name: 'Casa',
+      normalizedName: 'casa',
+      origin: 'custom',
+    })
+    const { service, update } = setup([current])
+    await service.updateCategory(
+      { groupId: 'group-1', userId: 'user-1' },
+      {
+        categoryId: current.id,
+        name: 'Moradia',
+        type: 'expense',
+        parentCategoryId: null,
+        icon: 'house',
+      },
+    )
+    expect(update).toHaveBeenCalledWith(
+      'group-1',
+      current.id,
+      expect.objectContaining({
+        name: 'Moradia',
+        normalizedName: 'moradia',
+      }),
+    )
+    expect(update.mock.calls[0]?.[2]).not.toHaveProperty('createdAt')
+    expect(update.mock.calls[0]?.[2]).not.toHaveProperty('createdBy')
+  })
+
+  it('mantém tipo e pai imutáveis ao editar categoria padrão', async () => {
+    const current = category({
+      id: 'default',
+      name: 'Casa',
+      normalizedName: 'casa',
+      origin: 'default',
+    })
+    const { service, update } = setup([current])
+    await service.updateCategory(
+      { groupId: 'group-1', userId: 'user-1' },
+      {
+        categoryId: current.id,
+        name: 'Moradia',
+        type: 'income',
+        parentCategoryId: 'other',
+        icon: 'house',
+      },
+    )
+    expect(update).toHaveBeenCalledWith(
+      'group-1',
+      current.id,
+      expect.objectContaining({ type: 'expense', parentCategoryId: null }),
+    )
+  })
+
+  it('arquiva pai e filhas ativas em cascata', async () => {
+    const root = category({
+      id: 'root',
+      name: 'Casa',
+      normalizedName: 'casa',
+    })
+    const child = category({
+      id: 'child',
+      name: 'Aluguel',
+      normalizedName: 'aluguel',
+      parentCategoryId: root.id,
+    })
+    const { service, setArchived } = setup([root, child])
+    await service.archiveCategory(
+      { groupId: 'group-1', userId: 'user-1' },
+      { categoryId: root.id },
+    )
+    expect(setArchived).toHaveBeenCalledWith('group-1', ['root', 'child'], true)
+  })
+
+  it('restaura apenas quando o pai está ativo e não há duplicidade', async () => {
+    const root = category({
+      id: 'root',
+      name: 'Casa',
+      normalizedName: 'casa',
+    })
+    const child = category({
+      id: 'child',
+      name: 'Aluguel',
+      normalizedName: 'aluguel',
+      parentCategoryId: root.id,
+      status: 'archived',
+    })
+    const { service, setArchived } = setup([root, child])
+    await service.restoreCategory(
+      { groupId: 'group-1', userId: 'user-1' },
+      { categoryId: child.id },
+    )
+    expect(setArchived).toHaveBeenCalledWith('group-1', ['child'], false)
+  })
+
+  it.each([
+    {
+      label: 'padrão',
+      value: category({
+        id: 'default',
+        name: 'Casa',
+        normalizedName: 'casa',
+      }),
+      code: 'default-delete-forbidden',
+    },
+    {
+      label: 'usada',
+      value: category({
+        id: 'used',
+        name: 'Pets',
+        normalizedName: 'pets',
+        origin: 'custom',
+        usageCount: 1,
+      }),
+      code: 'category-in-use',
+    },
+    {
+      label: 'principal personalizada',
+      value: category({
+        id: 'custom-root',
+        name: 'Pets',
+        normalizedName: 'pets',
+        origin: 'custom',
+      }),
+      code: 'root-delete-forbidden',
+    },
+  ])('não exclui categoria $label', async ({ value, code }) => {
+    const { service, remove } = setup([value])
+    await expect(
+      service.deleteCategory(
+        { groupId: 'group-1', userId: 'user-1' },
+        { categoryId: value.id },
+      ),
+    ).rejects.toMatchObject({ code })
+    expect(remove).not.toHaveBeenCalled()
+  })
+
+  it('exclui categoria personalizada nunca usada e sem filhas', async () => {
+    const root = category({
+      id: 'root',
+      name: 'Casa',
+      normalizedName: 'casa',
+    })
+    const custom = category({
+      id: 'custom',
+      name: 'Pets',
+      normalizedName: 'pets',
+      origin: 'custom',
+      parentCategoryId: root.id,
+    })
+    const { service, remove } = setup([root, custom])
+    await service.deleteCategory(
+      { groupId: 'group-1', userId: 'user-1' },
+      { categoryId: custom.id },
+    )
+    expect(remove).toHaveBeenCalledWith('group-1', custom.id)
   })
 })
