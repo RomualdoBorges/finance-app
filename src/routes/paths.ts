@@ -9,6 +9,7 @@ export const routePaths = {
   deleteAccount: '/conta/excluir',
   categories: '/categorias',
   accounts: '/contas',
+  transactions: '/lancamentos',
 } as const
 
 export type RoutePath = (typeof routePaths)[keyof typeof routePaths]

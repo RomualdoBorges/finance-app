@@ -95,14 +95,65 @@ function accountRef(firestore: Firestore, groupId: string, accountId: string) {
   return doc(firestore, 'financialGroups', groupId, 'accounts', accountId)
 }
 
-function accountData(groupId: string, userId: string, overrides: Readonly<Record<string, unknown>> = {}) {
+function accountData(
+  groupId: string,
+  userId: string,
+  overrides: Readonly<Record<string, unknown>> = {},
+) {
   return {
-    groupId, name: 'Conta principal', normalizedName: 'conta principal',
-    description: null, institutionName: 'Banco', icon: null, color: '#2563eb',
-    accountType: 'checking', includeInBalance: true, includeInNetWorth: true,
-    initialBalanceMinor: 0, initialBalanceDate: '2026-07-31',
-    status: 'active', isArchived: false, createdBy: userId,
-    createdAt: serverTimestamp(), updatedAt: serverTimestamp(), ...overrides,
+    groupId,
+    name: 'Conta principal',
+    normalizedName: 'conta principal',
+    description: null,
+    institutionName: 'Banco',
+    icon: null,
+    color: '#2563eb',
+    accountType: 'checking',
+    includeInBalance: true,
+    includeInNetWorth: true,
+    initialBalanceMinor: 0,
+    initialBalanceDate: '2026-07-31',
+    status: 'active',
+    isArchived: false,
+    createdBy: userId,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+    ...overrides,
+  }
+}
+
+function transactionRef(
+  firestore: Firestore,
+  groupId: string,
+  transactionId: string,
+) {
+  return doc(
+    firestore,
+    'financialGroups',
+    groupId,
+    'transactions',
+    transactionId,
+  )
+}
+
+function transactionData(
+  groupId: string,
+  userId: string,
+  overrides: Readonly<Record<string, unknown>> = {},
+) {
+  return {
+    groupId,
+    type: 'expense',
+    description: 'Mercado',
+    normalizedDescription: 'mercado',
+    amountMinor: 15050,
+    accountId: 'account-1',
+    categoryId: 'category-1',
+    notes: null,
+    createdBy: userId,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+    ...overrides,
   }
 }
 
@@ -655,9 +706,27 @@ describe('Firestore Rules de contas', () => {
     const reference = accountRef(firestore, 'group-a', 'account-1')
     await assertSucceeds(setDoc(reference, accountData('group-a', 'user-1')))
     await assertSucceeds(getDoc(reference))
-    await assertSucceeds(updateDoc(reference, { name: 'Nova conta', normalizedName: 'nova conta', updatedAt: serverTimestamp() }))
-    await assertSucceeds(updateDoc(reference, { status: 'archived', isArchived: true, updatedAt: serverTimestamp() }))
-    await assertSucceeds(updateDoc(reference, { status: 'active', isArchived: false, updatedAt: serverTimestamp() }))
+    await assertSucceeds(
+      updateDoc(reference, {
+        name: 'Nova conta',
+        normalizedName: 'nova conta',
+        updatedAt: serverTimestamp(),
+      }),
+    )
+    await assertSucceeds(
+      updateDoc(reference, {
+        status: 'archived',
+        isArchived: true,
+        updatedAt: serverTimestamp(),
+      }),
+    )
+    await assertSucceeds(
+      updateDoc(reference, {
+        status: 'active',
+        isArchived: false,
+        updatedAt: serverTimestamp(),
+      }),
+    )
     const restored = await getDoc(reference)
     expect(restored.data()).toMatchObject({
       initialBalanceMinor: 0,
@@ -669,13 +738,18 @@ describe('Firestore Rules de contas', () => {
     await seedPersonalGroup('group-a', 'user-1')
     const owner = environment.authenticatedContext('user-1').firestore()
     const outsider = environment.authenticatedContext('user-2').firestore()
-    await assertFails(getDocs(collection(outsider, 'financialGroups/group-a/accounts')))
+    await assertFails(
+      getDocs(collection(outsider, 'financialGroups/group-a/accounts')),
+    )
     const invalid = [
       accountData('group-b', 'user-1'),
       accountData('group-a', 'user-2'),
       accountData('group-a', 'user-1', { currentBalance: 0 }),
       accountData('group-a', 'user-1', { createdAt: Timestamp.now() }),
-      accountData('group-a', 'user-1', { status: 'archived', isArchived: false }),
+      accountData('group-a', 'user-1', {
+        status: 'archived',
+        isArchived: false,
+      }),
       accountData('group-a', 'user-1', { accountType: 'payment' }),
       accountData('group-a', 'user-1', { includeInBalance: 'yes' }),
       accountData('group-a', 'user-1', { includeInNetWorth: 1 }),
@@ -691,11 +765,16 @@ describe('Firestore Rules de contas', () => {
       accountData('group-a', 'user-1', { initialBalanceDate: '31/07/2026' }),
       accountData('group-a', 'user-1', { initialBalanceDate: '2026-13-01' }),
     ]
-    const missingFlag = accountData('group-a', 'user-1') as Record<string, unknown>
+    const missingFlag = accountData('group-a', 'user-1') as Record<
+      string,
+      unknown
+    >
     delete missingFlag.includeInBalance
     invalid.push(missingFlag)
     for (const [index, value] of invalid.entries()) {
-      await assertFails(setDoc(accountRef(owner, 'group-a', `invalid-${index}`), value))
+      await assertFails(
+        setDoc(accountRef(owner, 'group-a', `invalid-${index}`), value),
+      )
     }
   })
 
@@ -718,7 +797,10 @@ describe('Firestore Rules de contas', () => {
     })
     await assertSucceeds(getDoc(reference))
     await assertFails(
-      updateDoc(reference, { name: 'Ainda legado', updatedAt: serverTimestamp() }),
+      updateDoc(reference, {
+        name: 'Ainda legado',
+        updatedAt: serverTimestamp(),
+      }),
     )
     await assertSucceeds(
       updateDoc(reference, {
@@ -742,9 +824,15 @@ describe('Firestore Rules de contas', () => {
       { groupId: 'group-b', updatedAt: serverTimestamp() },
       { createdBy: 'user-2', updatedAt: serverTimestamp() },
       { createdAt: Timestamp.fromMillis(0), updatedAt: serverTimestamp() },
-    ]) await assertFails(updateDoc(reference, change))
+    ])
+      await assertFails(updateDoc(reference, change))
     await assertFails(deleteDoc(reference))
-    await assertFails(setDoc(accountRef(owner, 'group-b', 'foreign'), accountData('group-b', 'user-1')))
+    await assertFails(
+      setDoc(
+        accountRef(owner, 'group-b', 'foreign'),
+        accountData('group-b', 'user-1'),
+      ),
+    )
   })
 
   it('preserva o trio consolidado em edição, archive e restore e bloqueia sua escrita', async () => {
@@ -763,23 +851,34 @@ describe('Firestore Rules de contas', () => {
       })
     })
 
-    await assertSucceeds(updateDoc(reference, {
-      name: 'Conta consolidada',
-      normalizedName: 'conta consolidada',
-      updatedAt: serverTimestamp(),
-    }))
-    await assertSucceeds(updateDoc(reference, {
-      status: 'archived', isArchived: true, updatedAt: serverTimestamp(),
-    }))
-    await assertSucceeds(updateDoc(reference, {
-      status: 'active', isArchived: false, updatedAt: serverTimestamp(),
-    }))
+    await assertSucceeds(
+      updateDoc(reference, {
+        name: 'Conta consolidada',
+        normalizedName: 'conta consolidada',
+        updatedAt: serverTimestamp(),
+      }),
+    )
+    await assertSucceeds(
+      updateDoc(reference, {
+        status: 'archived',
+        isArchived: true,
+        updatedAt: serverTimestamp(),
+      }),
+    )
+    await assertSucceeds(
+      updateDoc(reference, {
+        status: 'active',
+        isArchived: false,
+        updatedAt: serverTimestamp(),
+      }),
+    )
 
     for (const change of [
       { currentBalanceMinor: 13000, updatedAt: serverTimestamp() },
       { projectedBalanceMinor: 16000, updatedAt: serverTimestamp() },
       { balancesUpdatedAt: serverTimestamp(), updatedAt: serverTimestamp() },
-    ]) await assertFails(updateDoc(reference, change))
+    ])
+      await assertFails(updateDoc(reference, change))
 
     const snapshot = await getDoc(reference)
     expect(snapshot.data()).toMatchObject({
@@ -789,7 +888,8 @@ describe('Firestore Rules de contas', () => {
     })
 
     const withoutConsolidated = accountData('group-a', 'user-1', {
-      name: 'Sobrescrita', normalizedName: 'sobrescrita',
+      name: 'Sobrescrita',
+      normalizedName: 'sobrescrita',
     })
     await assertFails(setDoc(reference, withoutConsolidated))
   })
@@ -799,11 +899,14 @@ describe('Firestore Rules de contas', () => {
     const owner = environment.authenticatedContext('user-1').firestore()
     for (const [id, consolidated] of [
       ['partial', { currentBalanceMinor: 0 }],
-      ['invalid', {
-        currentBalanceMinor: 0,
-        projectedBalanceMinor: 1.5,
-        balancesUpdatedAt: Timestamp.fromMillis(0),
-      }],
+      [
+        'invalid',
+        {
+          currentBalanceMinor: 0,
+          projectedBalanceMinor: 1.5,
+          balancesUpdatedAt: Timestamp.fromMillis(0),
+        },
+      ],
     ] as const) {
       await environment.withSecurityRulesDisabled(async (context) => {
         await setDoc(accountRef(context.firestore(), 'group-a', id), {
@@ -813,10 +916,128 @@ describe('Firestore Rules de contas', () => {
           updatedAt: Timestamp.fromMillis(0),
         })
       })
-      await assertFails(updateDoc(accountRef(owner, 'group-a', id), {
-        name: 'Tentativa', normalizedName: 'tentativa',
-        updatedAt: serverTimestamp(),
-      }))
+      await assertFails(
+        updateDoc(accountRef(owner, 'group-a', id), {
+          name: 'Tentativa',
+          normalizedName: 'tentativa',
+          updatedAt: serverTimestamp(),
+        }),
+      )
     }
+  })
+})
+
+describe('Firestore Rules de lançamentos', () => {
+  async function seedReferences() {
+    await seedPersonalGroup('group-a', 'user-1')
+    await environment.withSecurityRulesDisabled(async (context) => {
+      await setDoc(
+        accountRef(context.firestore(), 'group-a', 'account-1'),
+        accountData('group-a', 'user-1', {
+          createdAt: Timestamp.fromMillis(0),
+          updatedAt: Timestamp.fromMillis(0),
+        }),
+      )
+      await setDoc(
+        categoryRef(context.firestore(), 'group-a', 'category-1'),
+        categoryData('group-a', 'user-1', {
+          createdAt: Timestamp.fromMillis(0),
+          updatedAt: Timestamp.fromMillis(0),
+        }),
+      )
+    })
+  }
+
+  it('permite ao membro criar e ler receita e despesa válidas', async () => {
+    await seedReferences()
+    const owner = environment.authenticatedContext('user-1').firestore()
+    await assertSucceeds(
+      setDoc(
+        transactionRef(owner, 'group-a', 'expense-1'),
+        transactionData('group-a', 'user-1'),
+      ),
+    )
+    await environment.withSecurityRulesDisabled(async (context) => {
+      await setDoc(
+        categoryRef(context.firestore(), 'group-a', 'income-1'),
+        categoryData('group-a', 'user-1', {
+          type: 'income',
+          createdAt: Timestamp.fromMillis(0),
+          updatedAt: Timestamp.fromMillis(0),
+        }),
+      )
+    })
+    await assertSucceeds(
+      setDoc(
+        transactionRef(owner, 'group-a', 'income-1'),
+        transactionData('group-a', 'user-1', {
+          type: 'income',
+          categoryId: 'income-1',
+        }),
+      ),
+    )
+    await assertSucceeds(
+      getDocs(collection(owner, 'financialGroups', 'group-a', 'transactions')),
+    )
+  })
+
+  it.each([
+    { type: 'transfer' },
+    { amountMinor: 0 },
+    { amountMinor: -1 },
+    { amountMinor: 1.5 },
+    { amountMinor: 9000000000001 },
+    { groupId: 'group-b' },
+    { createdBy: 'user-2' },
+    { status: 'confirmed' },
+  ])('bloqueia payload inválido %#', async (override) => {
+    await seedReferences()
+    const owner = environment.authenticatedContext('user-1').firestore()
+    await assertFails(
+      setDoc(
+        transactionRef(owner, 'group-a', crypto.randomUUID()),
+        transactionData('group-a', 'user-1', override),
+      ),
+    )
+  })
+
+  it('bloqueia referências ausentes, arquivadas, incompatíveis e outro usuário', async () => {
+    await seedReferences()
+    const owner = environment.authenticatedContext('user-1').firestore()
+    for (const override of [
+      { accountId: 'missing' },
+      { categoryId: 'missing' },
+      { type: 'income' },
+    ])
+      await assertFails(
+        setDoc(
+          transactionRef(owner, 'group-a', crypto.randomUUID()),
+          transactionData('group-a', 'user-1', override),
+        ),
+      )
+    const stranger = environment.authenticatedContext('user-2').firestore()
+    await assertFails(getDoc(transactionRef(stranger, 'group-a', 'anything')))
+    await assertFails(
+      setDoc(
+        transactionRef(stranger, 'group-a', 'foreign'),
+        transactionData('group-a', 'user-2'),
+      ),
+    )
+  })
+
+  it('bloqueia update e delete', async () => {
+    await seedReferences()
+    const owner = environment.authenticatedContext('user-1').firestore()
+    const reference = transactionRef(owner, 'group-a', 'expense-1')
+    await assertSucceeds(
+      setDoc(reference, transactionData('group-a', 'user-1')),
+    )
+    await assertFails(
+      updateDoc(reference, {
+        description: 'Alterada',
+        updatedAt: serverTimestamp(),
+      }),
+    )
+    await assertFails(deleteDoc(reference))
   })
 })

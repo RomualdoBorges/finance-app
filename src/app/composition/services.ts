@@ -18,6 +18,9 @@ import { CategoryService } from '../../features/category/services/CategoryServic
 import { FirestoreAccountRepository } from '../../features/account/repositories/FirestoreAccountRepository'
 import { E2EAccountRepository } from '../../features/account/repositories/E2EAccountRepository'
 import { AccountService } from '../../features/account/services/AccountService'
+import { FirestoreTransactionRepository } from '../../features/transaction/repositories/FirestoreTransactionRepository'
+import { E2ETransactionRepository } from '../../features/transaction/repositories/E2ETransactionRepository'
+import { TransactionService } from '../../features/transaction/services/TransactionService'
 
 const backendHealthRepository = new FirebaseBackendHealthRepository(
   firebaseClients,
@@ -48,6 +51,10 @@ const accountRepository =
   import.meta.env.MODE === 'e2e'
     ? new E2EAccountRepository()
     : new FirestoreAccountRepository(firebaseClients.firestore)
+const transactionRepository =
+  import.meta.env.MODE === 'e2e'
+    ? new E2ETransactionRepository()
+    : new FirestoreTransactionRepository(firebaseClients.firestore)
 
 export const services = {
   backendHealth: new BackendHealthService(backendHealthRepository),
@@ -61,4 +68,9 @@ export const services = {
   ),
   category: new CategoryService(categoryRepository),
   account: new AccountService(accountRepository),
+  transaction: new TransactionService(
+    transactionRepository,
+    accountRepository,
+    categoryRepository,
+  ),
 } as const

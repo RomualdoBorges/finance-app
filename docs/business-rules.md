@@ -145,3 +145,11 @@
 - grupo mantém ao menos um administrador;
 - remover membro não apaga lançamentos antigos;
 - `shared` é visível conforme participação e permissão; `private` somente para criador/proprietário e, se a política de produto for definida assim, administradores autorizados.
+## Receitas e despesas — contrato inicial
+
+- `income` representa receita e `expense` representa despesa.
+- `amountMinor` é sempre inteiro positivo entre 1 e 9.000.000.000.000 centavos; despesas não são persistidas com sinal negativo.
+- descrição tem de 2 a 120 caracteres após trim; observação é opcional, normalizada para `null` quando vazia e limitada a 500 caracteres.
+- conta e categoria devem existir, estar ativas e pertencer ao grupo; a categoria deve ser compatível com o tipo do lançamento. Categorias padrão, personalizadas e subcategorias ativas são aceitas.
+- a validação é repetida no envio para detectar arquivamento ocorrido com o formulário aberto.
+- a criação não incrementa `usageCount`, não altera conta, saldo, patrimônio, orçamento, resumo ou qualquer agregado.

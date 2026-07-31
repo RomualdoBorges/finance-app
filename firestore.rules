@@ -22,6 +22,10 @@ service cloud.firestore {
       return /databases/$(database)/documents/financialGroups/$(groupId)/categories/$(categoryId);
     }
 
+    function accountPath(groupId, accountId) {
+      return /databases/$(database)/documents/financialGroups/$(groupId)/accounts/$(accountId);
+    }
+
     function isActiveOwnerMembership(membership) {
       return membership.data.userId == request.auth.uid
         && membership.data.role == 'owner'
@@ -376,6 +380,51 @@ service cloud.firestore {
         && request.resource.data.updatedAt == request.time;
     }
 
+    function hasValidTransactionShape(groupId) {
+      return request.resource.data.keys().hasOnly([
+          'groupId', 'type', 'description', 'normalizedDescription',
+          'amountMinor', 'accountId', 'categoryId', 'notes',
+          'createdBy', 'createdAt', 'updatedAt'
+        ])
+        && request.resource.data.keys().hasAll([
+          'groupId', 'type', 'description', 'normalizedDescription',
+          'amountMinor', 'accountId', 'categoryId', 'notes',
+          'createdBy', 'createdAt', 'updatedAt'
+        ])
+        && request.resource.data.groupId == groupId
+        && request.resource.data.type in ['income', 'expense']
+        && request.resource.data.description is string
+        && request.resource.data.description.size() >= 2
+        && request.resource.data.description.size() <= 120
+        && request.resource.data.normalizedDescription is string
+        && request.resource.data.normalizedDescription.size() >= 2
+        && request.resource.data.normalizedDescription.size() <= 120
+        && request.resource.data.amountMinor is int
+        && request.resource.data.amountMinor > 0
+        && request.resource.data.amountMinor <= 9000000000000
+        && request.resource.data.accountId is string
+        && request.resource.data.accountId.size() > 0
+        && request.resource.data.categoryId is string
+        && request.resource.data.categoryId.size() > 0
+        && (request.resource.data.notes == null
+          || (request.resource.data.notes is string
+            && request.resource.data.notes.size() <= 500))
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time;
+    }
+
+    function hasValidTransactionReferences(groupId) {
+      let account = get(accountPath(groupId, request.resource.data.accountId));
+      let category = get(categoryPath(groupId, request.resource.data.categoryId));
+      return account.data.groupId == groupId
+        && account.data.status == 'active'
+        && account.data.isArchived == false
+        && category.data.groupId == groupId
+        && category.data.status == 'active'
+        && category.data.type == request.resource.data.type;
+    }
+
     match /users/{userId} {
       allow read: if isSelf(userId);
 
@@ -453,6 +502,15 @@ service cloud.firestore {
         allow update: if isActiveMember(groupId)
           && isValidAccountUpdate(groupId);
         allow delete: if false;
+      }
+
+      match /transactions/{transactionId} {
+        allow read: if isActiveMember(groupId);
+        allow create: if isActiveMember(groupId)
+          && transactionId.size() > 0
+          && hasValidTransactionShape(groupId)
+          && hasValidTransactionReferences(groupId);
+        allow update, delete: if false;
       }
     }
 
