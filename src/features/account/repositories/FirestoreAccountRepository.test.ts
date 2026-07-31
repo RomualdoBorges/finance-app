@@ -20,6 +20,9 @@ const data = {
   includeInNetWorth: true,
   initialBalanceMinor: 123456,
   initialBalanceDate: '2026-07-31',
+  currentBalanceMinor: 120000,
+  projectedBalanceMinor: 125000,
+  balancesUpdatedAt: timestamp,
   status: 'active',
   isArchived: false,
   createdBy: 'u1',
@@ -48,13 +51,29 @@ describe('FirestoreAccountRepository', () => {
     }
     const repository = new FirestoreAccountRepository({} as Firestore, ops)
     await repository.create({
-      ...data,
-      createdAt: undefined,
-      updatedAt: undefined,
-    } as never)
+      groupId: 'g1',
+      name: 'Conta',
+      normalizedName: 'conta',
+      description: null,
+      institutionName: null,
+      icon: null,
+      color: null,
+      accountType: 'checking',
+      includeInBalance: true,
+      includeInNetWorth: true,
+      initialBalanceMinor: 123456,
+      initialBalanceDate: '2026-07-31',
+      status: 'active',
+      isArchived: false,
+      createdBy: 'u1',
+    })
     expect(set).toHaveBeenCalledWith(
       'g1/a1',
-      expect.objectContaining({ createdAt: 'SERVER', updatedAt: 'SERVER' }),
+      expect.not.objectContaining({
+        currentBalanceMinor: expect.anything(),
+        projectedBalanceMinor: expect.anything(),
+        balancesUpdatedAt: expect.anything(),
+      }),
     )
     await repository.update('g1', 'a1', {
       name: 'Nova',
@@ -74,6 +93,9 @@ describe('FirestoreAccountRepository', () => {
       expect.not.objectContaining({
         createdBy: expect.anything(),
         createdAt: expect.anything(),
+        currentBalanceMinor: expect.anything(),
+        projectedBalanceMinor: expect.anything(),
+        balancesUpdatedAt: expect.anything(),
       }),
     )
     await repository.setArchived('g1', 'a1', true)
@@ -81,6 +103,11 @@ describe('FirestoreAccountRepository', () => {
       status: 'archived',
       isArchived: true,
       updatedAt: 'SERVER',
+    })
+    expect(stored).toMatchObject({
+      currentBalanceMinor: 120000,
+      projectedBalanceMinor: 125000,
+      balancesUpdatedAt: timestamp,
     })
   })
 
@@ -91,6 +118,9 @@ describe('FirestoreAccountRepository', () => {
     delete legacy.includeInNetWorth
     delete legacy.initialBalanceMinor
     delete legacy.initialBalanceDate
+    delete legacy.currentBalanceMinor
+    delete legacy.projectedBalanceMinor
+    delete legacy.balancesUpdatedAt
     const ops = {
       collection: vi.fn(() => 'accounts'),
       reference: vi.fn(),
@@ -111,6 +141,47 @@ describe('FirestoreAccountRepository', () => {
       includeInNetWorth: true,
       initialBalanceMinor: 0,
       initialBalanceDate: null,
+      currentBalanceMinor: 0,
+      projectedBalanceMinor: 0,
+      balancesUpdatedAt: null,
     })
+  })
+
+  it('usa o saldo inicial normalizado como fallback do trio consolidado', async () => {
+    const legacy = { ...data }
+    delete (legacy as Partial<typeof data>).currentBalanceMinor
+    delete (legacy as Partial<typeof data>).projectedBalanceMinor
+    delete (legacy as Partial<typeof data>).balancesUpdatedAt
+    const ops = {
+      collection: vi.fn(() => 'accounts'),
+      list: vi.fn(async () => [{ id: 'legacy', exists: true, data: legacy }]),
+    } as unknown as FirestoreAccountOperations
+    const [account] = await new FirestoreAccountRepository(
+      {} as Firestore,
+      ops,
+    ).listByGroup('g1')
+    expect(account).toMatchObject({
+      currentBalanceMinor: 123456,
+      projectedBalanceMinor: 123456,
+      balancesUpdatedAt: null,
+    })
+  })
+
+  it('rejeita presença parcial ou valores inválidos do trio consolidado', async () => {
+    for (const invalid of [
+      { ...data, projectedBalanceMinor: undefined },
+      { ...data, balancesUpdatedAt: undefined },
+      { ...data, currentBalanceMinor: 1.5 },
+    ]) {
+      const ops = {
+        collection: vi.fn(() => 'accounts'),
+        list: vi.fn(async () => [
+          { id: 'invalid', exists: true, data: invalid },
+        ]),
+      } as unknown as FirestoreAccountOperations
+      await expect(
+        new FirestoreAccountRepository({} as Firestore, ops).listByGroup('g1'),
+      ).rejects.toMatchObject({ code: 'invalid-data' })
+    }
   })
 })

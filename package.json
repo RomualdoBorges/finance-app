@@ -24,6 +24,7 @@
     "firebase:emulators:clean": "node -e \"require('node:fs').rmSync('.firebase/emulator-data',{recursive:true,force:true})\"",
     "firebase:emulators:exec": "firebase emulators:exec --only auth,firestore,functions,storage,hosting \"pnpm functions:typecheck\"",
     "functions:build": "pnpm --dir functions build",
+    "functions:test": "pnpm --dir functions test",
     "functions:typecheck": "pnpm --dir functions typecheck",
     "verify:package-manager": "node scripts/verify-package-manager.mjs",
     "validate": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm test:run && pnpm build",

@@ -278,6 +278,7 @@ service cloud.firestore {
           'institutionName', 'icon', 'color', 'status', 'isArchived',
           'accountType', 'includeInBalance', 'includeInNetWorth',
           'initialBalanceMinor', 'initialBalanceDate',
+          'currentBalanceMinor', 'projectedBalanceMinor', 'balancesUpdatedAt',
           'createdBy', 'createdAt', 'updatedAt'
         ])
         && request.resource.data.keys().hasAll([
@@ -317,6 +318,23 @@ service cloud.firestore {
         && request.resource.data.initialBalanceMinor <= 9000000000000
         && request.resource.data.initialBalanceDate is string
         && request.resource.data.initialBalanceDate.matches('^[0-9]{4}-(0[1-9]|1[0-2])-([0-2][0-9]|3[0-1])$')
+        && (
+          !request.resource.data.keys().hasAny([
+            'currentBalanceMinor', 'projectedBalanceMinor', 'balancesUpdatedAt'
+          ])
+          || (
+            request.resource.data.keys().hasAll([
+              'currentBalanceMinor', 'projectedBalanceMinor', 'balancesUpdatedAt'
+            ])
+            && request.resource.data.currentBalanceMinor is int
+            && request.resource.data.currentBalanceMinor >= -9000000000000
+            && request.resource.data.currentBalanceMinor <= 9000000000000
+            && request.resource.data.projectedBalanceMinor is int
+            && request.resource.data.projectedBalanceMinor >= -9000000000000
+            && request.resource.data.projectedBalanceMinor <= 9000000000000
+            && request.resource.data.balancesUpdatedAt is timestamp
+          )
+        )
         && request.resource.data.status in ['active', 'archived']
         && request.resource.data.isArchived is bool
         && (
@@ -332,6 +350,9 @@ service cloud.firestore {
 
     function isValidAccountCreate(groupId) {
       return hasValidAccountShape(groupId)
+        && !request.resource.data.keys().hasAny([
+          'currentBalanceMinor', 'projectedBalanceMinor', 'balancesUpdatedAt'
+        ])
         && request.resource.data.createdBy == request.auth.uid
         && request.resource.data.status == 'active'
         && request.resource.data.isArchived == false
@@ -342,7 +363,10 @@ service cloud.firestore {
     function isValidAccountUpdate(groupId) {
       let affected = request.resource.data.diff(resource.data).affectedKeys();
       return hasValidAccountShape(groupId)
-        && !affected.hasAny(['groupId', 'createdBy', 'createdAt'])
+        && !affected.hasAny([
+          'groupId', 'createdBy', 'createdAt',
+          'currentBalanceMinor', 'projectedBalanceMinor', 'balancesUpdatedAt'
+        ])
         && affected.hasOnly([
           'name', 'normalizedName', 'description', 'institutionName',
           'icon', 'color', 'accountType', 'includeInBalance',

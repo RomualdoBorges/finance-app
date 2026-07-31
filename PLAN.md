@@ -62,7 +62,7 @@ Nenhum item está concluído por existir no template. Checkboxes só são marcad
 - [x] Cadastro, edição e arquivamento de contas
 - [x] Tipos e opções de inclusão em saldo/patrimônio
 - [x] Saldo inicial
-- [ ] Campos consolidados atual e projetado protegidos
+- [x] Campos consolidados atual e projetado protegidos
 
 ### Milestone 3 — Lançamentos e extrato
 

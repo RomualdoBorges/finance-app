@@ -122,6 +122,30 @@ export function mapAccountSnapshot(
     data['includeInNetWorth'] ?? legacyDefaults.includeInNetWorth
   const initialBalanceMinor = data['initialBalanceMinor'] ?? 0
   const initialBalanceDate = data['initialBalanceDate'] ?? null
+  const consolidatedBalanceKeys = [
+    'currentBalanceMinor',
+    'projectedBalanceMinor',
+    'balancesUpdatedAt',
+  ] as const
+  const consolidatedBalanceKeyCount = consolidatedBalanceKeys.filter(
+    (key) => key in data,
+  ).length
+  if (
+    consolidatedBalanceKeyCount !== 0 &&
+    consolidatedBalanceKeyCount !== consolidatedBalanceKeys.length
+  )
+    throw new AccountError('invalid-data')
+  const hasConsolidatedBalances =
+    consolidatedBalanceKeyCount === consolidatedBalanceKeys.length
+  const currentBalanceMinor = hasConsolidatedBalances
+    ? data['currentBalanceMinor']
+    : initialBalanceMinor
+  const projectedBalanceMinor = hasConsolidatedBalances
+    ? data['projectedBalanceMinor']
+    : initialBalanceMinor
+  const balancesUpdatedAt = hasConsolidatedBalances
+    ? date(data['balancesUpdatedAt'])
+    : null
   if (
     snapshot.id.length === 0 ||
     data['groupId'] !== groupId ||
@@ -135,6 +159,9 @@ export function mapAccountSnapshot(
     typeof includeInBalance !== 'boolean' ||
     typeof includeInNetWorth !== 'boolean' ||
     !validateMinorAmount(initialBalanceMinor) ||
+    !validateMinorAmount(currentBalanceMinor) ||
+    !validateMinorAmount(projectedBalanceMinor) ||
+    (hasConsolidatedBalances && balancesUpdatedAt === null) ||
     (initialBalanceDate !== null &&
       !createAccountSchema.shape.initialBalanceDate.safeParse(
         initialBalanceDate,
@@ -161,6 +188,9 @@ export function mapAccountSnapshot(
     includeInNetWorth,
     initialBalanceMinor,
     initialBalanceDate: initialBalanceDate as string | null,
+    currentBalanceMinor,
+    projectedBalanceMinor,
+    balancesUpdatedAt,
     status: data['status'] as Account['status'],
     isArchived: data['isArchived'],
     createdBy: data['createdBy'],

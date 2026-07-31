@@ -46,6 +46,12 @@
 - opções manuais de inclusão em saldo e patrimônio prevalecem sobre defaults;
 - cartão de crédito será tratado futuramente como passivo no patrimônio;
 - as opções não calculam saldo nem patrimônio; esses consolidados permanecem fora deste item.
+- `currentBalanceMinor` e `projectedBalanceMinor` são consolidados exclusivos do
+  backend; nesta etapa não há cálculo, endpoint ou gatilho que os atualize;
+- o trio consolidado inclui `balancesUpdatedAt`, deve ser persistido por inteiro
+  e usa timestamp confiável do servidor;
+- na leitura de documentos sem o trio, ambos os saldos usam o saldo inicial já
+  normalizado e o instante permanece nulo, sem materialização pelo cliente.
 
 ## Cartões e faturas — Fase 2
 

@@ -19,6 +19,9 @@ const base = (overrides: Partial<Account> = {}): Account => ({
   includeInNetWorth: true,
   initialBalanceMinor: 0,
   initialBalanceDate: '2026-01-01',
+  currentBalanceMinor: 0,
+  projectedBalanceMinor: 0,
+  balancesUpdatedAt: null,
   status: 'active',
   isArchived: false,
   createdBy: 'u1',
@@ -69,6 +72,13 @@ describe('AccountService', () => {
         accountType: 'credit_card',
         includeInBalance: false,
         includeInNetWorth: true,
+      }),
+    )
+    expect(repository.create).toHaveBeenCalledWith(
+      expect.not.objectContaining({
+        currentBalanceMinor: expect.anything(),
+        projectedBalanceMinor: expect.anything(),
+        balancesUpdatedAt: expect.anything(),
       }),
     )
   })
@@ -137,6 +147,15 @@ describe('AccountService', () => {
         accountType: 'investment',
         includeInBalance: true,
         includeInNetWorth: false,
+      }),
+    )
+    expect(repository.update).toHaveBeenCalledWith(
+      'g1',
+      'a1',
+      expect.not.objectContaining({
+        currentBalanceMinor: expect.anything(),
+        projectedBalanceMinor: expect.anything(),
+        balancesUpdatedAt: expect.anything(),
       }),
     )
   })

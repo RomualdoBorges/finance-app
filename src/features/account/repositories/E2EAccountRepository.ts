@@ -5,27 +5,67 @@ import type {
 } from '../domain/Account'
 import type { AccountRepository } from './AccountRepository'
 
+type StoredAccount = Omit<
+  Account,
+  'currentBalanceMinor' | 'projectedBalanceMinor' | 'balancesUpdatedAt'
+> &
+  Partial<
+    Pick<
+      Account,
+      'currentBalanceMinor' | 'projectedBalanceMinor' | 'balancesUpdatedAt'
+    >
+  >
+
+function readAccount(account: StoredAccount): Account {
+  const consolidatedKeyCount = [
+    'currentBalanceMinor',
+    'projectedBalanceMinor',
+    'balancesUpdatedAt',
+  ].filter((key) => key in account).length
+  if (consolidatedKeyCount !== 0 && consolidatedKeyCount !== 3) {
+    throw new Error('Invalid consolidated account balances')
+  }
+  return {
+    ...account,
+    currentBalanceMinor:
+      account.currentBalanceMinor ?? account.initialBalanceMinor,
+    projectedBalanceMinor:
+      account.projectedBalanceMinor ?? account.initialBalanceMinor,
+    balancesUpdatedAt: account.balancesUpdatedAt ?? null,
+  }
+}
+
 export class E2EAccountRepository implements AccountRepository {
   private readonly storageKey = 'finance-app:e2e-accounts'
   private readonly accounts = this.load()
   private nextId = this.accounts.size + 1
 
-  private load(): Map<string, Account> {
+  private load(): Map<string, StoredAccount> {
     const raw = window.localStorage.getItem(this.storageKey)
     if (raw === null) return new Map()
     try {
       const accounts = JSON.parse(raw) as Array<
-        Omit<Account, 'createdAt' | 'updatedAt'> & {
+        Omit<StoredAccount, 'createdAt' | 'updatedAt' | 'balancesUpdatedAt'> & {
           createdAt: string
           updatedAt: string
+          balancesUpdatedAt?: string | null
         }
       >
       return new Map(
         accounts.map((account) => {
-          const parsed: Account = {
-            ...account,
-            createdAt: new Date(account.createdAt),
-            updatedAt: new Date(account.updatedAt),
+          const { createdAt, updatedAt, balancesUpdatedAt, ...values } = account
+          const parsed: StoredAccount = {
+            ...values,
+            ...(balancesUpdatedAt === undefined
+              ? {}
+              : {
+                  balancesUpdatedAt:
+                    balancesUpdatedAt === null
+                      ? null
+                      : new Date(balancesUpdatedAt),
+                }),
+            createdAt: new Date(createdAt),
+            updatedAt: new Date(updatedAt),
           }
           return [`${parsed.groupId}:${parsed.id}`, parsed]
         }),
@@ -44,18 +84,23 @@ export class E2EAccountRepository implements AccountRepository {
 
   listByGroup(groupId: string): Promise<readonly Account[]> {
     return Promise.resolve(
-      [...this.accounts.values()].filter(
-        (account) => account.groupId === groupId,
-      ),
+      [...this.accounts.values()]
+        .filter((account) => account.groupId === groupId)
+        .map(readAccount),
     )
   }
   create(input: PersistAccountInput): Promise<Account> {
     const id = `account-${this.nextId++}`
     const timestamp = new Date()
-    const account = { ...input, id, createdAt: timestamp, updatedAt: timestamp }
+    const account: StoredAccount = {
+      ...input,
+      id,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    }
     this.accounts.set(`${input.groupId}:${id}`, account)
     this.persist()
-    return Promise.resolve(account)
+    return Promise.resolve(readAccount(account))
   }
   update(
     groupId: string,
@@ -68,7 +113,7 @@ export class E2EAccountRepository implements AccountRepository {
     const account = { ...current, ...input, updatedAt: new Date() }
     this.accounts.set(key, account)
     this.persist()
-    return Promise.resolve(account)
+    return Promise.resolve(readAccount(account))
   }
   setArchived(
     groupId: string,

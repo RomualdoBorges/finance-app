@@ -85,8 +85,15 @@ sofrer deslocamento de timezone, e o valor BRL usa centavos inteiros.
 O enum e os defaults das opções estão em `docs/accounts.md`. Documentos legados
 sem esses três campos são lidos como tipo `other` com ambas as opções `true` e
 são completados na próxima edição. Para saldo inicial legado, a leitura usa
-zero e data `null`; a próxima edição exige e persiste ambos. Saldos atual e
-projetado permanecem fora deste item.
+zero e data `null`; a próxima edição exige e persiste ambos.
+
+O contrato admite ainda o trio server-managed `currentBalanceMinor`,
+`projectedBalanceMinor` e `balancesUpdatedAt`. Os saldos são inteiros em
+centavos no intervalo monetário padrão e o instante é `Timestamp`. O trio deve
+estar completo quando persistido. Documentos sem ele continuam legíveis e usam
+no mapper o saldo inicial normalizado para os dois valores, com instante nulo;
+operações comuns do cliente não persistem esse fallback. O cálculo real dos
+saldos permanece fora deste item.
 
 ### `categories` — Milestone 2
 

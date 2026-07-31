@@ -680,6 +680,12 @@ describe('Firestore Rules de contas', () => {
       accountData('group-a', 'user-1', { includeInBalance: 'yes' }),
       accountData('group-a', 'user-1', { includeInNetWorth: 1 }),
       accountData('group-a', 'user-1', { projectedBalance: 0 }),
+      accountData('group-a', 'user-1', { currentBalanceMinor: 0 }),
+      accountData('group-a', 'user-1', {
+        currentBalanceMinor: 0,
+        projectedBalanceMinor: 0,
+        balancesUpdatedAt: serverTimestamp(),
+      }),
       accountData('group-a', 'user-1', { initialBalanceMinor: 1.5 }),
       accountData('group-a', 'user-1', { initialBalanceMinor: 9000000000001 }),
       accountData('group-a', 'user-1', { initialBalanceDate: '31/07/2026' }),
@@ -739,5 +745,78 @@ describe('Firestore Rules de contas', () => {
     ]) await assertFails(updateDoc(reference, change))
     await assertFails(deleteDoc(reference))
     await assertFails(setDoc(accountRef(owner, 'group-b', 'foreign'), accountData('group-b', 'user-1')))
+  })
+
+  it('preserva o trio consolidado em edição, archive e restore e bloqueia sua escrita', async () => {
+    await seedPersonalGroup('group-a', 'user-1')
+    const owner = environment.authenticatedContext('user-1').firestore()
+    const reference = accountRef(owner, 'group-a', 'consolidated')
+    const consolidatedAt = Timestamp.fromDate(new Date('2026-07-31T12:00:00Z'))
+    await environment.withSecurityRulesDisabled(async (context) => {
+      await setDoc(accountRef(context.firestore(), 'group-a', 'consolidated'), {
+        ...accountData('group-a', 'user-1'),
+        currentBalanceMinor: 12500,
+        projectedBalanceMinor: 15000,
+        balancesUpdatedAt: consolidatedAt,
+        createdAt: Timestamp.fromDate(new Date('2026-01-01T00:00:00Z')),
+        updatedAt: Timestamp.fromDate(new Date('2026-01-01T00:00:00Z')),
+      })
+    })
+
+    await assertSucceeds(updateDoc(reference, {
+      name: 'Conta consolidada',
+      normalizedName: 'conta consolidada',
+      updatedAt: serverTimestamp(),
+    }))
+    await assertSucceeds(updateDoc(reference, {
+      status: 'archived', isArchived: true, updatedAt: serverTimestamp(),
+    }))
+    await assertSucceeds(updateDoc(reference, {
+      status: 'active', isArchived: false, updatedAt: serverTimestamp(),
+    }))
+
+    for (const change of [
+      { currentBalanceMinor: 13000, updatedAt: serverTimestamp() },
+      { projectedBalanceMinor: 16000, updatedAt: serverTimestamp() },
+      { balancesUpdatedAt: serverTimestamp(), updatedAt: serverTimestamp() },
+    ]) await assertFails(updateDoc(reference, change))
+
+    const snapshot = await getDoc(reference)
+    expect(snapshot.data()).toMatchObject({
+      currentBalanceMinor: 12500,
+      projectedBalanceMinor: 15000,
+      balancesUpdatedAt: consolidatedAt,
+    })
+
+    const withoutConsolidated = accountData('group-a', 'user-1', {
+      name: 'Sobrescrita', normalizedName: 'sobrescrita',
+    })
+    await assertFails(setDoc(reference, withoutConsolidated))
+  })
+
+  it('bloqueia update quando o trio consolidado persistido é parcial ou inválido', async () => {
+    await seedPersonalGroup('group-a', 'user-1')
+    const owner = environment.authenticatedContext('user-1').firestore()
+    for (const [id, consolidated] of [
+      ['partial', { currentBalanceMinor: 0 }],
+      ['invalid', {
+        currentBalanceMinor: 0,
+        projectedBalanceMinor: 1.5,
+        balancesUpdatedAt: Timestamp.fromMillis(0),
+      }],
+    ] as const) {
+      await environment.withSecurityRulesDisabled(async (context) => {
+        await setDoc(accountRef(context.firestore(), 'group-a', id), {
+          ...accountData('group-a', 'user-1'),
+          ...consolidated,
+          createdAt: Timestamp.fromMillis(0),
+          updatedAt: Timestamp.fromMillis(0),
+        })
+      })
+      await assertFails(updateDoc(accountRef(owner, 'group-a', id), {
+        name: 'Tentativa', normalizedName: 'tentativa',
+        updatedAt: serverTimestamp(),
+      }))
+    }
   })
 })

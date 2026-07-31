@@ -17,6 +17,9 @@ export type Account = {
   readonly includeInNetWorth: boolean
   readonly initialBalanceMinor: number
   readonly initialBalanceDate: string | null
+  readonly currentBalanceMinor: number
+  readonly projectedBalanceMinor: number
+  readonly balancesUpdatedAt: Date | null
   readonly status: AccountStatus
   readonly isArchived: boolean
   readonly createdBy: string
@@ -45,7 +48,12 @@ export type UpdateAccountInput = CreateAccountInput & {
 
 export type PersistAccountInput = Omit<
   Account,
-  'id' | 'createdAt' | 'updatedAt'
+  | 'id'
+  | 'createdAt'
+  | 'updatedAt'
+  | 'currentBalanceMinor'
+  | 'projectedBalanceMinor'
+  | 'balancesUpdatedAt'
 >
 export type PersistAccountUpdate = Pick<
   Account,

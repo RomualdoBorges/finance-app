@@ -9,6 +9,12 @@ O contrato contém `groupId`, `name`, `normalizedName`, `description`,
 `includeInNetWorth`, `status`, `isArchived`, `createdBy`, `createdAt` e
 `updatedAt`, além de `initialBalanceMinor` e `initialBalanceDate`.
 
+O contrato persistido também pode conter o trio protegido
+`currentBalanceMinor`, `projectedBalanceMinor` e `balancesUpdatedAt`. Os dois
+primeiros são inteiros em centavos no mesmo intervalo do saldo inicial; o
+último é o timestamp da consolidação confiável. O trio é administrado
+exclusivamente pelo backend e deve estar integralmente presente ou ausente.
+
 ## Saldo inicial
 
 O saldo inicial representa quanto já existia na conta em uma data de
@@ -27,6 +33,26 @@ dívida. Valores positivos em cartão não são bloqueados tecnicamente.
 Enquanto não existem lançamentos, valor e data podem ser editados normalmente.
 Essa regra deverá ser revista quando lançamentos forem implementados. Arquivar e
 restaurar preservam os dois campos.
+
+## Saldos consolidados protegidos
+
+`currentBalanceMinor` representará futuramente o saldo calculado a partir do
+saldo inicial e dos lançamentos efetivados. `projectedBalanceMinor` representará
+o saldo atual acrescido dos lançamentos futuros ou pendentes. Nenhum desses
+cálculos existe nesta etapa.
+
+Na ausência do trio, o mapper usa o `initialBalanceMinor` já normalizado como
+fallback para ambos os saldos e devolve `balancesUpdatedAt: null`. Assim, uma
+conta totalmente legada continua produzindo zero. Presença parcial ou valores
+inválidos tornam o documento inválido; o fallback nunca combina dados
+persistidos parciais com valores derivados.
+
+Criação, edição, arquivamento e restauração do cliente não materializam nem
+alteram o trio. As Firestore Rules aceitam operações comuns com o trio ausente
+ou completo e válido, mas bloqueiam sua inclusão, alteração ou remoção pelo
+cliente. Uma abstração interna das Functions pode escrever somente os dois
+saldos e `balancesUpdatedAt` com timestamp do servidor, sem alterar
+`updatedAt`; ela ainda não é chamada por Function, trigger ou job.
 
 `accountType` usa o enum fechado: `checking` (Conta corrente), `savings`
 (Poupança), `cash` (Dinheiro), `credit_card` (Cartão de crédito), `investment`

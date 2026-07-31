@@ -31,8 +31,12 @@ permitido, `includeInBalance` e `includeInNetWorth` booleanos, grupo do
 path, autor autenticado, estado ativo/não arquivado e timestamps do servidor.
 Updates preservam grupo, autor e criação e só admitem os campos mutáveis; delete
 é bloqueado. Documentos legados continuam legíveis, mas um update só é aceito
-quando o resultado final contém o contrato novo completo. Campos de saldo e
-consolidados futuros e quaisquer campos extras continuam bloqueados. A
+quando o resultado final contém o contrato novo completo. O trio consolidado
+`currentBalanceMinor`, `projectedBalanceMinor` e `balancesUpdatedAt` é opcional
+apenas como unidade completa e tem tipos e limites validados quando presente.
+Sua criação, alteração ou remoção pelo cliente é bloqueada; updates comuns,
+inclusive archive/restore, preservam o trio existente. Quaisquer outros campos
+extras continuam bloqueados. A
 unicidade do nome normalizado é validada no domínio, com risco concorrente
 documentado.
 
