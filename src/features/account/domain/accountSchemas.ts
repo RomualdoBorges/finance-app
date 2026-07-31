@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { ACCOUNT_TYPES } from './accountTypes'
+import { MAX_MONEY_MINOR, MIN_MONEY_MINOR } from '../../../shared/money/money'
 
 const identifierSchema = z
   .string()
@@ -66,6 +67,29 @@ export const createAccountSchema = z
     includeInNetWorth: z.boolean({
       message: 'Informe se a conta deve ser incluída no patrimônio.',
     }),
+    initialBalanceMinor: z
+      .number({ message: 'Informe um saldo inicial válido.' })
+      .int('O saldo inicial deve usar centavos inteiros.')
+      .min(MIN_MONEY_MINOR, 'O saldo inicial está abaixo do limite permitido.')
+      .max(MAX_MONEY_MINOR, 'O saldo inicial está acima do limite permitido.'),
+    initialBalanceDate: z
+      .string({ message: 'Informe a data do saldo inicial.' })
+      .regex(
+        /^\d{4}-\d{2}-\d{2}$/,
+        'Use uma data válida no formato AAAA-MM-DD.',
+      )
+      .refine((value) => {
+        const parts = value.split('-').map(Number)
+        const year = parts[0]!
+        const month = parts[1]!
+        const day = parts[2]!
+        const date = new Date(Date.UTC(year, month - 1, day))
+        return (
+          date.getUTCFullYear() === year &&
+          date.getUTCMonth() === month - 1 &&
+          date.getUTCDate() === day
+        )
+      }, 'Informe uma data válida.'),
   })
   .strict()
 

@@ -2,8 +2,9 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import * as Dialog from '@radix-ui/react-dialog'
 import { Pencil, X } from 'lucide-react'
 import { useState } from 'react'
-import { useForm } from 'react-hook-form'
+import { useForm, useWatch } from 'react-hook-form'
 import { z } from 'zod'
+import { format } from 'date-fns'
 import { Button } from '../../../components/ui/Button'
 import type {
   Account,
@@ -13,13 +14,28 @@ import type {
 import { AccountError } from '../domain/AccountError'
 import { createAccountSchema } from '../domain/accountSchemas'
 import {
+  formatMinorToCurrency,
+  parseCurrencyToMinor,
+} from '../../../shared/money/money'
+import {
   ACCOUNT_TYPES,
   ACCOUNT_TYPE_LABELS,
   getAccountTypeDefaults,
   type AccountType,
 } from '../domain/accountTypes'
 
-type Values = z.input<typeof createAccountSchema>
+const accountFormSchema = createAccountSchema
+  .omit({ initialBalanceMinor: true })
+  .extend({
+    initialBalance: z
+      .string()
+      .refine(
+        (value) => parseCurrencyToMinor(value) !== null,
+        'Informe um valor em reais com no máximo duas casas decimais.',
+      ),
+  })
+
+type Values = z.input<typeof accountFormSchema>
 export function AccountFormDialog({
   account,
   pending,
@@ -39,9 +55,10 @@ export function AccountFormDialog({
     setError,
     setValue,
     getValues,
+    control,
     formState: { errors },
   } = useForm<Values>({
-    resolver: zodResolver(createAccountSchema),
+    resolver: zodResolver(accountFormSchema),
     defaultValues: {
       name: account?.name ?? '',
       description: account?.description ?? '',
@@ -51,13 +68,22 @@ export function AccountFormDialog({
       accountType: account?.accountType ?? 'other',
       includeInBalance: account?.includeInBalance ?? true,
       includeInNetWorth: account?.includeInNetWorth ?? true,
+      initialBalance:
+        account === undefined
+          ? 'R$ 0,00'
+          : formatMinorToCurrency(account.initialBalanceMinor),
+      initialBalanceDate:
+        account?.initialBalanceDate ?? format(new Date(), 'yyyy-MM-dd'),
     },
   })
   const accountTypeRegistration = register('accountType')
+  const selectedAccountType = useWatch({ control, name: 'accountType' })
   const submit = handleSubmit(async (values) => {
     try {
+      const { initialBalance, ...formValues } = values
       const input = {
-        ...values,
+        ...formValues,
+        initialBalanceMinor: parseCurrencyToMinor(initialBalance)!,
         description: values.description ?? null,
         institutionName: values.institutionName ?? null,
         icon: values.icon ?? null,
@@ -161,6 +187,32 @@ export function AccountFormDialog({
               Ao trocar o tipo, os padrões são reaplicados somente às opções que
               ainda não foram personalizadas.
             </p>
+            <Field label="Saldo inicial" error={errors.initialBalance?.message}>
+              <input
+                className="mt-1 min-h-10 w-full rounded-md border border-border bg-background px-3"
+                inputMode="decimal"
+                placeholder="R$ 0,00"
+                {...register('initialBalance')}
+              />
+              <span className="mt-1 block text-xs font-normal text-muted-foreground">
+                Informe quanto já existia nesta conta na data escolhida.
+              </span>
+              {selectedAccountType === 'credit_card' ? (
+                <span className="mt-1 block text-xs font-normal text-muted-foreground">
+                  Informe dívidas existentes como valor negativo.
+                </span>
+              ) : null}
+            </Field>
+            <Field
+              label="Data do saldo inicial"
+              error={errors.initialBalanceDate?.message}
+            >
+              <input
+                className="mt-1 min-h-10 w-full rounded-md border border-border bg-background px-3"
+                type="date"
+                {...register('initialBalanceDate')}
+              />
+            </Field>
             <CheckboxField
               label="Incluir no saldo"
               description="Define a participação em um futuro saldo financeiro consolidado."

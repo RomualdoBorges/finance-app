@@ -15,7 +15,8 @@
 - planejados participam apenas das projeções definidas pelo produto, sem se tornarem confirmados implicitamente;
 - criação, edição, confirmação, cancelamento, estorno e reembolso ajustam conta, orçamento e resumo de modo consistente e auditável;
 - lançamentos vencidos podem ser marcados por Scheduled Function;
-- o saldo inicial integra a base consolidada da conta;
+- o saldo inicial é persistido em centavos BRL com data civil `YYYY-MM-DD`; ele
+  integrará a base consolidada da conta, mas não há consolidação nesta etapa;
 - `currentBalance` e `projectedBalance` são atualizados transacionalmente por backend confiável.
 
 ## Transferências

@@ -104,6 +104,8 @@ export class AccountService {
       accountType: values.accountType,
       includeInBalance: values.includeInBalance,
       includeInNetWorth: values.includeInNetWorth,
+      initialBalanceMinor: values.initialBalanceMinor,
+      initialBalanceDate: values.initialBalanceDate,
     })
   }
 

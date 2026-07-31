@@ -15,6 +15,8 @@ import type {
 import { useAccountMutations } from '../hooks/useAccountMutations'
 import { useAccounts } from '../hooks/useAccounts'
 import { ACCOUNT_TYPE_LABELS } from '../domain/accountTypes'
+import { formatMinorToCurrency } from '../../../shared/money/money'
+import { format, parseISO } from 'date-fns'
 
 export function AccountsPage() {
   const { accounts, loading, error, refresh } = useAccounts()
@@ -161,6 +163,13 @@ function AccountSection({
                     {account.includeInNetWorth
                       ? 'Inclui no patrimônio'
                       : 'Não inclui no patrimônio'}
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Saldo inicial:{' '}
+                    {formatMinorToCurrency(account.initialBalanceMinor)}{' '}
+                    {account.initialBalanceDate === null
+                      ? '· data não informada'
+                      : `em ${format(parseISO(account.initialBalanceDate), 'dd/MM/yyyy')}`}
                   </p>
                   {account.isArchived ? (
                     <p className="mt-1 text-xs font-medium">Arquivada</p>

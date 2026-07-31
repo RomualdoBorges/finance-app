@@ -36,6 +36,13 @@ consolidados futuros e quaisquer campos extras continuam bloqueados. A
 unicidade do nome normalizado é validada no domínio, com risco concorrente
 documentado.
 
+O contrato exige `initialBalanceMinor` inteiro entre `-9.000.000.000.000` e
+`9.000.000.000.000` centavos e `initialBalanceDate` como string civil
+`YYYY-MM-DD`, com estrutura e mês/dia em faixas razoáveis. O domínio valida a
+existência real da data. Archive/restore alteram apenas estado e timestamp e
+preservam o saldo inicial. Um documento legado pode ser lido, mas seu próximo
+update deve completar os campos ausentes.
+
 Funções conceituais das Rules:
 
 - `isAuthenticated()`;

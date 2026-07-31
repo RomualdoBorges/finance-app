@@ -17,6 +17,8 @@ describe('accountSchemas', () => {
         accountType: 'checking',
         includeInBalance: true,
         includeInNetWorth: true,
+        initialBalanceMinor: 123456,
+        initialBalanceDate: '2026-07-31',
       }),
     ).toEqual({
       name: 'Conta principal',
@@ -27,6 +29,8 @@ describe('accountSchemas', () => {
       accountType: 'checking',
       includeInBalance: true,
       includeInNetWorth: true,
+      initialBalanceMinor: 123456,
+      initialBalanceDate: '2026-07-31',
     })
   })
   it.each([
@@ -40,6 +44,8 @@ describe('accountSchemas', () => {
         accountType: 'checking',
         includeInBalance: true,
         includeInNetWorth: true,
+        initialBalanceMinor: 0,
+        initialBalanceDate: '2026-07-31',
       },
     ],
     [
@@ -52,6 +58,8 @@ describe('accountSchemas', () => {
         accountType: 'checking',
         includeInBalance: true,
         includeInNetWorth: true,
+        initialBalanceMinor: 0,
+        initialBalanceDate: '2026-07-31',
       },
     ],
     [
@@ -65,6 +73,8 @@ describe('accountSchemas', () => {
         includeInBalance: true,
         includeInNetWorth: true,
         currentBalance: 0,
+        initialBalanceMinor: 0,
+        initialBalanceDate: '2026-07-31',
       },
     ],
   ])('rejeita entrada inválida ou campo extra', (input) => {
@@ -81,6 +91,31 @@ describe('accountSchemas', () => {
         accountType: 'checking',
         includeInBalance: true,
         includeInNetWorth: true,
+        initialBalanceMinor: 0,
+        initialBalanceDate: '2026-07-31',
+      }).success,
+    ).toBe(false)
+  })
+  it.each([
+    { initialBalanceMinor: 1.5, initialBalanceDate: '2026-07-31' },
+    { initialBalanceMinor: 0, initialBalanceDate: '31/07/2026' },
+    { initialBalanceMinor: 0, initialBalanceDate: '2026-02-30' },
+    {
+      initialBalanceMinor: 9_000_000_000_001,
+      initialBalanceDate: '2026-07-31',
+    },
+  ])('rejeita saldo ou data inicial inválidos', (financialFields) => {
+    expect(
+      createAccountSchema.safeParse({
+        name: 'Conta',
+        description: null,
+        institutionName: null,
+        icon: null,
+        color: null,
+        accountType: 'checking',
+        includeInBalance: true,
+        includeInNetWorth: true,
+        ...financialFields,
       }).success,
     ).toBe(false)
   })

@@ -277,12 +277,14 @@ service cloud.firestore {
           'groupId', 'name', 'normalizedName', 'description',
           'institutionName', 'icon', 'color', 'status', 'isArchived',
           'accountType', 'includeInBalance', 'includeInNetWorth',
+          'initialBalanceMinor', 'initialBalanceDate',
           'createdBy', 'createdAt', 'updatedAt'
         ])
         && request.resource.data.keys().hasAll([
           'groupId', 'name', 'normalizedName', 'description',
           'institutionName', 'icon', 'color', 'status', 'isArchived',
           'accountType', 'includeInBalance', 'includeInNetWorth',
+          'initialBalanceMinor', 'initialBalanceDate',
           'createdBy', 'createdAt', 'updatedAt'
         ])
         && request.resource.data.groupId == groupId
@@ -310,6 +312,11 @@ service cloud.firestore {
         ]
         && request.resource.data.includeInBalance is bool
         && request.resource.data.includeInNetWorth is bool
+        && request.resource.data.initialBalanceMinor is int
+        && request.resource.data.initialBalanceMinor >= -9000000000000
+        && request.resource.data.initialBalanceMinor <= 9000000000000
+        && request.resource.data.initialBalanceDate is string
+        && request.resource.data.initialBalanceDate.matches('^[0-9]{4}-(0[1-9]|1[0-2])-([0-2][0-9]|3[0-1])$')
         && request.resource.data.status in ['active', 'archived']
         && request.resource.data.isArchived is bool
         && (
@@ -339,7 +346,8 @@ service cloud.firestore {
         && affected.hasOnly([
           'name', 'normalizedName', 'description', 'institutionName',
           'icon', 'color', 'accountType', 'includeInBalance',
-          'includeInNetWorth', 'status', 'isArchived', 'updatedAt'
+          'includeInNetWorth', 'initialBalanceMinor', 'initialBalanceDate',
+          'status', 'isArchived', 'updatedAt'
         ])
         && request.resource.data.updatedAt == request.time;
     }

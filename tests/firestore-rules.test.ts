@@ -5,7 +5,7 @@ import {
   type RulesTestEnvironment,
 } from '@firebase/rules-unit-testing'
 import { readFile } from 'node:fs/promises'
-import { afterAll, beforeAll, beforeEach, describe, it } from 'vitest'
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import {
   collection,
   deleteDoc,
@@ -100,6 +100,7 @@ function accountData(groupId: string, userId: string, overrides: Readonly<Record
     groupId, name: 'Conta principal', normalizedName: 'conta principal',
     description: null, institutionName: 'Banco', icon: null, color: '#2563eb',
     accountType: 'checking', includeInBalance: true, includeInNetWorth: true,
+    initialBalanceMinor: 0, initialBalanceDate: '2026-07-31',
     status: 'active', isArchived: false, createdBy: userId,
     createdAt: serverTimestamp(), updatedAt: serverTimestamp(), ...overrides,
   }
@@ -657,6 +658,11 @@ describe('Firestore Rules de contas', () => {
     await assertSucceeds(updateDoc(reference, { name: 'Nova conta', normalizedName: 'nova conta', updatedAt: serverTimestamp() }))
     await assertSucceeds(updateDoc(reference, { status: 'archived', isArchived: true, updatedAt: serverTimestamp() }))
     await assertSucceeds(updateDoc(reference, { status: 'active', isArchived: false, updatedAt: serverTimestamp() }))
+    const restored = await getDoc(reference)
+    expect(restored.data()).toMatchObject({
+      initialBalanceMinor: 0,
+      initialBalanceDate: '2026-07-31',
+    })
   })
 
   it('bloqueia acesso externo, identidade/path divergentes, timestamp local e campos extras', async () => {
@@ -674,6 +680,10 @@ describe('Firestore Rules de contas', () => {
       accountData('group-a', 'user-1', { includeInBalance: 'yes' }),
       accountData('group-a', 'user-1', { includeInNetWorth: 1 }),
       accountData('group-a', 'user-1', { projectedBalance: 0 }),
+      accountData('group-a', 'user-1', { initialBalanceMinor: 1.5 }),
+      accountData('group-a', 'user-1', { initialBalanceMinor: 9000000000001 }),
+      accountData('group-a', 'user-1', { initialBalanceDate: '31/07/2026' }),
+      accountData('group-a', 'user-1', { initialBalanceDate: '2026-13-01' }),
     ]
     const missingFlag = accountData('group-a', 'user-1') as Record<string, unknown>
     delete missingFlag.includeInBalance
@@ -692,6 +702,8 @@ describe('Firestore Rules de contas', () => {
       delete legacy.accountType
       delete legacy.includeInBalance
       delete legacy.includeInNetWorth
+      delete legacy.initialBalanceMinor
+      delete legacy.initialBalanceDate
       await setDoc(accountRef(context.firestore(), 'group-a', 'legacy'), {
         ...legacy,
         createdAt: Timestamp.fromDate(new Date('2026-01-01T00:00:00Z')),
@@ -707,6 +719,8 @@ describe('Firestore Rules de contas', () => {
         accountType: 'other',
         includeInBalance: true,
         includeInNetWorth: true,
+        initialBalanceMinor: 0,
+        initialBalanceDate: '2026-07-31',
         updatedAt: serverTimestamp(),
       }),
     )

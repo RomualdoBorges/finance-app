@@ -25,6 +25,8 @@ import {
   type AccountType,
 } from '../domain/accountTypes'
 import type { AccountRepository } from './AccountRepository'
+import { validateMinorAmount } from '../../../shared/money/money'
+import { createAccountSchema } from '../domain/accountSchemas'
 
 type Snapshot = {
   readonly id: string
@@ -118,6 +120,8 @@ export function mapAccountSnapshot(
     data['includeInBalance'] ?? legacyDefaults.includeInBalance
   const includeInNetWorth =
     data['includeInNetWorth'] ?? legacyDefaults.includeInNetWorth
+  const initialBalanceMinor = data['initialBalanceMinor'] ?? 0
+  const initialBalanceDate = data['initialBalanceDate'] ?? null
   if (
     snapshot.id.length === 0 ||
     data['groupId'] !== groupId ||
@@ -130,6 +134,11 @@ export function mapAccountSnapshot(
     !ACCOUNT_TYPES.includes(accountType as AccountType) ||
     typeof includeInBalance !== 'boolean' ||
     typeof includeInNetWorth !== 'boolean' ||
+    !validateMinorAmount(initialBalanceMinor) ||
+    (initialBalanceDate !== null &&
+      !createAccountSchema.shape.initialBalanceDate.safeParse(
+        initialBalanceDate,
+      ).success) ||
     !ACCOUNT_STATUSES.includes(data['status'] as Account['status']) ||
     typeof data['isArchived'] !== 'boolean' ||
     (data['status'] === 'archived') !== data['isArchived'] ||
@@ -150,6 +159,8 @@ export function mapAccountSnapshot(
     accountType: accountType as AccountType,
     includeInBalance,
     includeInNetWorth,
+    initialBalanceMinor,
+    initialBalanceDate: initialBalanceDate as string | null,
     status: data['status'] as Account['status'],
     isArchived: data['isArchived'],
     createdBy: data['createdBy'],

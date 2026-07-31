@@ -77,12 +77,16 @@ permanecem fora do escopo até a fase de grupos compartilhados.
 O documento fica em `financialGroups/{groupId}/accounts/{accountId}` e contém
 `groupId`, `name`, `normalizedName`, `description`, `institutionName`, `icon`,
 `color`, `accountType`, `includeInBalance`, `includeInNetWorth`, `status`,
-`isArchived`, `createdBy`, `createdAt` e `updatedAt`.
-Campos opcionais são persistidos como `null`; datas usam `Firestore Timestamp`.
+`isArchived`, `initialBalanceMinor`, `initialBalanceDate`, `createdBy`,
+`createdAt` e `updatedAt`.
+Campos opcionais são persistidos como `null`; timestamps técnicos usam
+`Firestore Timestamp`. A data civil do saldo inicial usa `YYYY-MM-DD` para não
+sofrer deslocamento de timezone, e o valor BRL usa centavos inteiros.
 O enum e os defaults das opções estão em `docs/accounts.md`. Documentos legados
 sem esses três campos são lidos como tipo `other` com ambas as opções `true` e
-são completados na próxima edição. Saldo inicial e saldos atual/projetado
-permanecem fora deste item.
+são completados na próxima edição. Para saldo inicial legado, a leitura usa
+zero e data `null`; a próxima edição exige e persiste ambos. Saldos atual e
+projetado permanecem fora deste item.
 
 ### `categories` — Milestone 2
 

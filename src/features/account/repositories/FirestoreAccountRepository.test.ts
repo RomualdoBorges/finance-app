@@ -18,6 +18,8 @@ const data = {
   accountType: 'checking',
   includeInBalance: true,
   includeInNetWorth: true,
+  initialBalanceMinor: 123456,
+  initialBalanceDate: '2026-07-31',
   status: 'active',
   isArchived: false,
   createdBy: 'u1',
@@ -64,6 +66,8 @@ describe('FirestoreAccountRepository', () => {
       accountType: 'investment',
       includeInBalance: false,
       includeInNetWorth: true,
+      initialBalanceMinor: -2500,
+      initialBalanceDate: '2026-07-30',
     })
     expect(update).toHaveBeenLastCalledWith(
       'g1/a1',
@@ -85,6 +89,8 @@ describe('FirestoreAccountRepository', () => {
     delete legacy.accountType
     delete legacy.includeInBalance
     delete legacy.includeInNetWorth
+    delete legacy.initialBalanceMinor
+    delete legacy.initialBalanceDate
     const ops = {
       collection: vi.fn(() => 'accounts'),
       reference: vi.fn(),
@@ -103,6 +109,8 @@ describe('FirestoreAccountRepository', () => {
       accountType: 'other',
       includeInBalance: true,
       includeInNetWorth: true,
+      initialBalanceMinor: 0,
+      initialBalanceDate: null,
     })
   })
 })

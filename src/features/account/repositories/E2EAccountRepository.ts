@@ -6,8 +6,41 @@ import type {
 import type { AccountRepository } from './AccountRepository'
 
 export class E2EAccountRepository implements AccountRepository {
-  private readonly accounts = new Map<string, Account>()
-  private nextId = 1
+  private readonly storageKey = 'finance-app:e2e-accounts'
+  private readonly accounts = this.load()
+  private nextId = this.accounts.size + 1
+
+  private load(): Map<string, Account> {
+    const raw = window.localStorage.getItem(this.storageKey)
+    if (raw === null) return new Map()
+    try {
+      const accounts = JSON.parse(raw) as Array<
+        Omit<Account, 'createdAt' | 'updatedAt'> & {
+          createdAt: string
+          updatedAt: string
+        }
+      >
+      return new Map(
+        accounts.map((account) => {
+          const parsed: Account = {
+            ...account,
+            createdAt: new Date(account.createdAt),
+            updatedAt: new Date(account.updatedAt),
+          }
+          return [`${parsed.groupId}:${parsed.id}`, parsed]
+        }),
+      )
+    } catch {
+      return new Map()
+    }
+  }
+
+  private persist(): void {
+    window.localStorage.setItem(
+      this.storageKey,
+      JSON.stringify([...this.accounts.values()]),
+    )
+  }
 
   listByGroup(groupId: string): Promise<readonly Account[]> {
     return Promise.resolve(
@@ -21,6 +54,7 @@ export class E2EAccountRepository implements AccountRepository {
     const timestamp = new Date()
     const account = { ...input, id, createdAt: timestamp, updatedAt: timestamp }
     this.accounts.set(`${input.groupId}:${id}`, account)
+    this.persist()
     return Promise.resolve(account)
   }
   update(
@@ -33,6 +67,7 @@ export class E2EAccountRepository implements AccountRepository {
     if (current === undefined) return Promise.reject(new Error('not found'))
     const account = { ...current, ...input, updatedAt: new Date() }
     this.accounts.set(key, account)
+    this.persist()
     return Promise.resolve(account)
   }
   setArchived(
@@ -42,13 +77,15 @@ export class E2EAccountRepository implements AccountRepository {
   ): Promise<void> {
     const key = `${groupId}:${accountId}`
     const current = this.accounts.get(key)
-    if (current !== undefined)
+    if (current !== undefined) {
       this.accounts.set(key, {
         ...current,
         status: archived ? 'archived' : 'active',
         isArchived: archived,
         updatedAt: new Date(),
       })
+      this.persist()
+    }
     return Promise.resolve()
   }
 }

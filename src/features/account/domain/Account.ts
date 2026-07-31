@@ -15,6 +15,8 @@ export type Account = {
   readonly accountType: AccountType
   readonly includeInBalance: boolean
   readonly includeInNetWorth: boolean
+  readonly initialBalanceMinor: number
+  readonly initialBalanceDate: string | null
   readonly status: AccountStatus
   readonly isArchived: boolean
   readonly createdBy: string
@@ -32,7 +34,10 @@ export type CreateAccountInput = Pick<
   | 'accountType'
   | 'includeInBalance'
   | 'includeInNetWorth'
->
+> & {
+  readonly initialBalanceMinor: number
+  readonly initialBalanceDate: string
+}
 
 export type UpdateAccountInput = CreateAccountInput & {
   readonly accountId: string
@@ -53,4 +58,6 @@ export type PersistAccountUpdate = Pick<
   | 'accountType'
   | 'includeInBalance'
   | 'includeInNetWorth'
+  | 'initialBalanceMinor'
+  | 'initialBalanceDate'
 >

@@ -76,12 +76,12 @@ Nesta etapa, a exclusão remove somente a conta do Firebase Authentication. O do
 
 ### Contas
 
-1. Usuário cria ou edita identificação, tipo e opções de inclusão futura em saldo e patrimônio.
+1. Usuário cria ou edita identificação, tipo, saldo inicial/data e opções de inclusão futura em saldo e patrimônio.
 2. Selecionar um tipo aplica defaults apenas às opções ainda não personalizadas.
 3. Aplicação normaliza o nome e valida duplicidade entre contas ativas.
 4. Usuário confirma o arquivamento; a conta permanece visível no gerenciamento.
 5. Ao restaurar, a duplicidade é validada novamente.
-6. Não há exclusão física nem cálculo de saldo ou patrimônio nesta etapa.
+6. O saldo inicial é apenas uma referência editável; não há exclusão física nem cálculo de saldo atual, projetado ou patrimônio nesta etapa.
 
 ### Categorias
 

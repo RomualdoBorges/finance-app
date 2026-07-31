@@ -34,6 +34,8 @@ const account: Account = {
   accountType: 'checking',
   includeInBalance: true,
   includeInNetWorth: true,
+  initialBalanceMinor: 123456,
+  initialBalanceDate: '2026-07-31',
   status: 'active',
   isArchived: false,
   createdBy: 'u1',
@@ -93,8 +95,38 @@ describe('AccountsPage', () => {
     expect(screen.getAllByText('Conta corrente')).toHaveLength(2)
     expect(screen.getAllByText(/Inclui no saldo/)).toHaveLength(2)
     expect(
+      screen.getAllByText(/Saldo inicial: R\$\s*1\.234,56 em 31\/07\/2026/),
+    ).toHaveLength(2)
+    expect(
       screen.queryByRole('button', { name: /excluir/i }),
     ).not.toBeInTheDocument()
+  })
+  it('converte saldo em reais para centavos e orienta cartão de crédito', async () => {
+    renderWithProviders(<AccountsPage />)
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Adicionar conta' }),
+    )
+    expect(screen.getByLabelText(/^Saldo inicial/)).toHaveValue('R$ 0,00')
+    expect(screen.getByLabelText('Data do saldo inicial')).toHaveValue(
+      new Date().toLocaleDateString('en-CA'),
+    )
+    await userEvent.type(screen.getByLabelText('Nome'), 'Nova conta')
+    await userEvent.selectOptions(
+      screen.getByLabelText('Tipo da conta'),
+      'credit_card',
+    )
+    expect(
+      screen.getByText('Informe dívidas existentes como valor negativo.'),
+    ).toBeInTheDocument()
+    await userEvent.clear(screen.getByLabelText(/^Saldo inicial/))
+    await userEvent.type(screen.getByLabelText(/^Saldo inicial/), '-1.234,56')
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar conta' }))
+    expect(createAccount).toHaveBeenCalledWith(
+      expect.objectContaining({
+        initialBalanceMinor: -123456,
+        initialBalanceDate: new Date().toLocaleDateString('en-CA'),
+      }),
+    )
   })
   it('exibe loading, erro e vazio', () => {
     useAccounts.mockReturnValueOnce({

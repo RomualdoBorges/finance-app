@@ -17,6 +17,8 @@ const base = (overrides: Partial<Account> = {}): Account => ({
   accountType: 'other',
   includeInBalance: true,
   includeInNetWorth: true,
+  initialBalanceMinor: 0,
+  initialBalanceDate: '2026-01-01',
   status: 'active',
   isArchived: false,
   createdBy: 'u1',
@@ -53,6 +55,8 @@ describe('AccountService', () => {
         accountType: 'credit_card',
         includeInBalance: false,
         includeInNetWorth: true,
+        initialBalanceMinor: -12345,
+        initialBalanceDate: '2025-12-31',
       },
     )
     expect(repository.create).toHaveBeenCalledWith(
@@ -82,6 +86,8 @@ describe('AccountService', () => {
           accountType: 'other',
           includeInBalance: true,
           includeInNetWorth: true,
+          initialBalanceMinor: 0,
+          initialBalanceDate: '2026-01-01',
         },
       ),
     ).rejects.toMatchObject({ code: 'duplicate' })
@@ -98,6 +104,8 @@ describe('AccountService', () => {
           accountType: 'other',
           includeInBalance: true,
           includeInNetWorth: true,
+          initialBalanceMinor: 0,
+          initialBalanceDate: '2026-01-01',
         },
       ),
     ).resolves.toBeDefined()
@@ -116,6 +124,8 @@ describe('AccountService', () => {
         accountType: 'investment',
         includeInBalance: true,
         includeInNetWorth: false,
+        initialBalanceMinor: 5000,
+        initialBalanceDate: '2025-12-31',
       },
     )
     expect(repository.update).toHaveBeenCalledWith(
