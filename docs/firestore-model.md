@@ -72,11 +72,14 @@ O documento fica em `financialGroups/{groupId}/members/{userId}` e contém
 `updatedAt`. Outros papéis, permissões e dados desnormalizados de participante
 permanecem fora do escopo até a fase de grupos compartilhados.
 
-### `accounts` — MVP
+### `accounts` — Milestone 2 (cadastro e manutenção)
 
-Campos: `name`, `institutionName`, `type` (`checking`, `savings`, `cash`, `digital_wallet`, `payment`, `investment`, `joint`, `other`), `ownerId`, `color`, `icon`, `currency`, `initialBalance`, `currentBalance`, `projectedBalance`, `creditLimit`, `includeInAvailableBalance`, `includeInNetWorth`, `status`, `createdAt`, `updatedAt`.
-
-`currentBalance` e `projectedBalance` são campos consolidados e atualizados por Functions com transações Firestore; não são reconstruídos pelo cliente.
+O documento fica em `financialGroups/{groupId}/accounts/{accountId}` e contém
+`groupId`, `name`, `normalizedName`, `description`, `institutionName`, `icon`,
+`color`, `status`, `isArchived`, `createdBy`, `createdAt` e `updatedAt`.
+Campos opcionais são persistidos como `null`; datas usam `Firestore Timestamp`.
+Tipos, opções de consolidação, saldo inicial e saldos atual/projetado permanecem
+fora deste item. O contrato e as decisões estão em `docs/accounts.md`.
 
 ### `categories` — Milestone 2
 

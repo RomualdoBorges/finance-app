@@ -76,11 +76,12 @@ Nesta etapa, a exclusão remove somente a conta do Firebase Authentication. O do
 
 ### Contas
 
-1. Usuário abre contas, cria ou edita nome, instituição, tipo, saldo inicial e opções de consolidação.
-2. Aplicação converte dinheiro para centavos e valida.
-3. Operação salva a conta sem permitir escrita arbitrária nos saldos consolidados.
-4. Lista exibe saldo atual e projetado.
-5. Conta com histórico é arquivada, preservando lançamentos.
+1. Usuário abre contas e cria ou edita nome, descrição, instituição, ícone e cor.
+2. Aplicação normaliza o nome e valida duplicidade entre contas ativas.
+3. Usuário confirma o arquivamento; a conta permanece visível no gerenciamento.
+4. Ao restaurar, a duplicidade é validada novamente.
+5. Não há exclusão física. Tipos, opções de consolidação e saldos ficam para os
+   próximos itens do roadmap.
 
 ### Categorias
 

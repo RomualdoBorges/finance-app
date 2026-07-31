@@ -25,6 +25,13 @@ pai. Exclusão é aceita somente para categoria personalizada com contador de us
 zero e que seja subcategoria; raízes são arquivadas porque as Rules não podem
 provar a ausência de filhas por consulta reversa.
 
+Em `/financialGroups/{groupId}/accounts/{accountId}`, membros ativos podem ler,
+criar e atualizar o contrato exato de identificação. Criação exige grupo do
+path, autor autenticado, estado ativo/não arquivado e timestamps do servidor.
+Updates preservam grupo, autor e criação; delete é bloqueado. Campos futuros de
+tipo, saldo, patrimônio e consolidação não são aceitos. A unicidade do nome
+normalizado é validada no domínio, com risco concorrente documentado.
+
 Funções conceituais das Rules:
 
 - `isAuthenticated()`;

@@ -9,6 +9,7 @@ import { UpdatePasswordPage } from '../features/auth/pages/UpdatePasswordPage'
 import { DeleteCurrentUserPage } from '../features/auth/pages/DeleteCurrentUserPage'
 import { NotFoundPage } from '../features/not-found/pages/NotFoundPage'
 import { CategoriesPage } from '../features/category/pages/CategoriesPage'
+import { AccountsPage } from '../features/account/pages/AccountsPage'
 import { AppLayout } from '../layouts/AppLayout'
 import { AuthLayout } from '../layouts/AuthLayout'
 import { ProtectedRouteGuard } from './guards/ProtectedRouteGuard'
@@ -51,6 +52,7 @@ export const router = createBrowserRouter([
             children: [
               { path: routePaths.home, element: <HomePage /> },
               { path: routePaths.categories, element: <CategoriesPage /> },
+              { path: routePaths.accounts, element: <AccountsPage /> },
               {
                 path: routePaths.updatePassword,
                 element: <UpdatePasswordPage />,

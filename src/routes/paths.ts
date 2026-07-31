@@ -8,6 +8,7 @@ export const routePaths = {
   updatePassword: '/conta/alterar-senha',
   deleteAccount: '/conta/excluir',
   categories: '/categorias',
+  accounts: '/contas',
 } as const
 
 export type RoutePath = (typeof routePaths)[keyof typeof routePaths]

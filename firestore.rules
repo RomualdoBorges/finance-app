@@ -272,6 +272,69 @@ service cloud.firestore {
         );
     }
 
+    function hasValidAccountShape(groupId) {
+      return request.resource.data.keys().hasOnly([
+          'groupId', 'name', 'normalizedName', 'description',
+          'institutionName', 'icon', 'color', 'status', 'isArchived',
+          'createdBy', 'createdAt', 'updatedAt'
+        ])
+        && request.resource.data.keys().hasAll([
+          'groupId', 'name', 'normalizedName', 'description',
+          'institutionName', 'icon', 'color', 'status', 'isArchived',
+          'createdBy', 'createdAt', 'updatedAt'
+        ])
+        && request.resource.data.groupId == groupId
+        && request.resource.data.name is string
+        && request.resource.data.name.size() >= 2
+        && request.resource.data.name.size() <= 60
+        && request.resource.data.normalizedName is string
+        && request.resource.data.normalizedName.size() >= 2
+        && request.resource.data.normalizedName.size() <= 60
+        && (request.resource.data.description == null
+          || (request.resource.data.description is string
+            && request.resource.data.description.size() <= 200))
+        && (request.resource.data.institutionName == null
+          || (request.resource.data.institutionName is string
+            && request.resource.data.institutionName.size() <= 80))
+        && (request.resource.data.icon == null
+          || (request.resource.data.icon is string
+            && request.resource.data.icon.size() <= 40))
+        && (request.resource.data.color == null
+          || (request.resource.data.color is string
+            && request.resource.data.color.matches('^#[0-9A-Fa-f]{6}$')))
+        && request.resource.data.status in ['active', 'archived']
+        && request.resource.data.isArchived is bool
+        && (
+          (request.resource.data.status == 'active'
+            && request.resource.data.isArchived == false)
+          || (request.resource.data.status == 'archived'
+            && request.resource.data.isArchived == true)
+        )
+        && request.resource.data.createdBy is string
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.updatedAt is timestamp;
+    }
+
+    function isValidAccountCreate(groupId) {
+      return hasValidAccountShape(groupId)
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.status == 'active'
+        && request.resource.data.isArchived == false
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time;
+    }
+
+    function isValidAccountUpdate(groupId) {
+      let affected = request.resource.data.diff(resource.data).affectedKeys();
+      return hasValidAccountShape(groupId)
+        && !affected.hasAny(['groupId', 'createdBy', 'createdAt'])
+        && affected.hasOnly([
+          'name', 'normalizedName', 'description', 'institutionName',
+          'icon', 'color', 'status', 'isArchived', 'updatedAt'
+        ])
+        && request.resource.data.updatedAt == request.time;
+    }
+
     match /users/{userId} {
       allow read: if isSelf(userId);
 
@@ -339,6 +402,16 @@ service cloud.firestore {
 
         allow delete: if isActiveMember(groupId)
           && canDeleteCategory();
+      }
+
+      match /accounts/{accountId} {
+        allow read: if isActiveMember(groupId);
+        allow create: if isActiveMember(groupId)
+          && accountId.size() > 0
+          && isValidAccountCreate(groupId);
+        allow update: if isActiveMember(groupId)
+          && isValidAccountUpdate(groupId);
+        allow delete: if false;
       }
     }
 

@@ -91,6 +91,19 @@ function categoryData(
   }
 }
 
+function accountRef(firestore: Firestore, groupId: string, accountId: string) {
+  return doc(firestore, 'financialGroups', groupId, 'accounts', accountId)
+}
+
+function accountData(groupId: string, userId: string, overrides: Readonly<Record<string, unknown>> = {}) {
+  return {
+    groupId, name: 'Conta principal', normalizedName: 'conta principal',
+    description: null, institutionName: 'Banco', icon: null, color: '#2563eb',
+    status: 'active', isArchived: false, createdBy: userId,
+    createdAt: serverTimestamp(), updatedAt: serverTimestamp(), ...overrides,
+  }
+}
+
 beforeAll(async () => {
   environment = await initializeTestEnvironment({
     projectId: 'finance-app-dev-23ac7',
@@ -630,5 +643,50 @@ describe('Firestore Rules de categorias', () => {
       })
     })
     await assertFails(deleteDoc(used))
+  })
+})
+
+describe('Firestore Rules de contas', () => {
+  it('permite membro ativo criar, ler, editar, arquivar e restaurar', async () => {
+    await seedPersonalGroup('group-a', 'user-1')
+    const firestore = environment.authenticatedContext('user-1').firestore()
+    const reference = accountRef(firestore, 'group-a', 'account-1')
+    await assertSucceeds(setDoc(reference, accountData('group-a', 'user-1')))
+    await assertSucceeds(getDoc(reference))
+    await assertSucceeds(updateDoc(reference, { name: 'Nova conta', normalizedName: 'nova conta', updatedAt: serverTimestamp() }))
+    await assertSucceeds(updateDoc(reference, { status: 'archived', isArchived: true, updatedAt: serverTimestamp() }))
+    await assertSucceeds(updateDoc(reference, { status: 'active', isArchived: false, updatedAt: serverTimestamp() }))
+  })
+
+  it('bloqueia acesso externo, identidade/path divergentes, timestamp local e campos extras', async () => {
+    await seedPersonalGroup('group-a', 'user-1')
+    const owner = environment.authenticatedContext('user-1').firestore()
+    const outsider = environment.authenticatedContext('user-2').firestore()
+    await assertFails(getDocs(collection(outsider, 'financialGroups/group-a/accounts')))
+    const invalid = [
+      accountData('group-b', 'user-1'),
+      accountData('group-a', 'user-2'),
+      accountData('group-a', 'user-1', { currentBalance: 0 }),
+      accountData('group-a', 'user-1', { createdAt: Timestamp.now() }),
+      accountData('group-a', 'user-1', { status: 'archived', isArchived: false }),
+    ]
+    for (const [index, value] of invalid.entries()) {
+      await assertFails(setDoc(accountRef(owner, 'group-a', `invalid-${index}`), value))
+    }
+  })
+
+  it('preserva campos protegidos e bloqueia delete físico e escrita de outro grupo', async () => {
+    await seedPersonalGroup('group-a', 'user-1')
+    await seedPersonalGroup('group-b', 'user-2')
+    const owner = environment.authenticatedContext('user-1').firestore()
+    const reference = accountRef(owner, 'group-a', 'account-1')
+    await setDoc(reference, accountData('group-a', 'user-1'))
+    for (const change of [
+      { groupId: 'group-b', updatedAt: serverTimestamp() },
+      { createdBy: 'user-2', updatedAt: serverTimestamp() },
+      { createdAt: serverTimestamp(), updatedAt: serverTimestamp() },
+    ]) await assertFails(updateDoc(reference, change))
+    await assertFails(deleteDoc(reference))
+    await assertFails(setDoc(accountRef(owner, 'group-b', 'foreign'), accountData('group-b', 'user-1')))
   })
 })

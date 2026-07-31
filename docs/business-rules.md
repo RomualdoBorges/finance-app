@@ -34,6 +34,15 @@
 - arquivamento preserva o significado do histórico;
 - regras automáticas não podem aplicar categoria incompatível com o lançamento.
 
+## Contas
+
+- nome é normalizado e deve ser único entre contas ativas do mesmo grupo;
+- conta arquivada permanece armazenada e pode coexistir com uma ativa de mesmo
+  nome, mas só pode ser restaurada se não houver conflito;
+- arquivamento e restauração são idempotentes;
+- exclusão física não é oferecida, preservando futuras referências históricas;
+- tipos, saldos e opções de inclusão em consolidações permanecem fora deste item.
+
 ## Cartões e faturas — Fase 2
 
 - compra no cartão é `card_purchase` e pertence a uma fatura;
