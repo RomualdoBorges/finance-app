@@ -14,6 +14,9 @@ describe('accountSchemas', () => {
         institutionName: 'Banco',
         icon: 'landmark',
         color: '#2563eb',
+        accountType: 'checking',
+        includeInBalance: true,
+        includeInNetWorth: true,
       }),
     ).toEqual({
       name: 'Conta principal',
@@ -21,6 +24,9 @@ describe('accountSchemas', () => {
       institutionName: 'Banco',
       icon: 'landmark',
       color: '#2563eb',
+      accountType: 'checking',
+      includeInBalance: true,
+      includeInNetWorth: true,
     })
   })
   it.each([
@@ -31,6 +37,9 @@ describe('accountSchemas', () => {
         institutionName: null,
         icon: null,
         color: null,
+        accountType: 'checking',
+        includeInBalance: true,
+        includeInNetWorth: true,
       },
     ],
     [
@@ -40,6 +49,9 @@ describe('accountSchemas', () => {
         institutionName: null,
         icon: null,
         color: null,
+        accountType: 'checking',
+        includeInBalance: true,
+        includeInNetWorth: true,
       },
     ],
     [
@@ -49,6 +61,9 @@ describe('accountSchemas', () => {
         institutionName: null,
         icon: null,
         color: null,
+        accountType: 'invalid',
+        includeInBalance: true,
+        includeInNetWorth: true,
         currentBalance: 0,
       },
     ],
@@ -63,6 +78,9 @@ describe('accountSchemas', () => {
         institutionName: null,
         icon: null,
         color: null,
+        accountType: 'checking',
+        includeInBalance: true,
+        includeInNetWorth: true,
       }).success,
     ).toBe(false)
   })

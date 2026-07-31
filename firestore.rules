@@ -276,11 +276,13 @@ service cloud.firestore {
       return request.resource.data.keys().hasOnly([
           'groupId', 'name', 'normalizedName', 'description',
           'institutionName', 'icon', 'color', 'status', 'isArchived',
+          'accountType', 'includeInBalance', 'includeInNetWorth',
           'createdBy', 'createdAt', 'updatedAt'
         ])
         && request.resource.data.keys().hasAll([
           'groupId', 'name', 'normalizedName', 'description',
           'institutionName', 'icon', 'color', 'status', 'isArchived',
+          'accountType', 'includeInBalance', 'includeInNetWorth',
           'createdBy', 'createdAt', 'updatedAt'
         ])
         && request.resource.data.groupId == groupId
@@ -302,6 +304,12 @@ service cloud.firestore {
         && (request.resource.data.color == null
           || (request.resource.data.color is string
             && request.resource.data.color.matches('^#[0-9A-Fa-f]{6}$')))
+        && request.resource.data.accountType in [
+          'checking', 'savings', 'cash', 'credit_card', 'investment',
+          'digital_wallet', 'other'
+        ]
+        && request.resource.data.includeInBalance is bool
+        && request.resource.data.includeInNetWorth is bool
         && request.resource.data.status in ['active', 'archived']
         && request.resource.data.isArchived is bool
         && (
@@ -330,7 +338,8 @@ service cloud.firestore {
         && !affected.hasAny(['groupId', 'createdBy', 'createdAt'])
         && affected.hasOnly([
           'name', 'normalizedName', 'description', 'institutionName',
-          'icon', 'color', 'status', 'isArchived', 'updatedAt'
+          'icon', 'color', 'accountType', 'includeInBalance',
+          'includeInNetWorth', 'status', 'isArchived', 'updatedAt'
         ])
         && request.resource.data.updatedAt == request.time;
     }

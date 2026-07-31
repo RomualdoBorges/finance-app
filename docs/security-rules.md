@@ -26,11 +26,15 @@ zero e que seja subcategoria; raízes são arquivadas porque as Rules não podem
 provar a ausência de filhas por consulta reversa.
 
 Em `/financialGroups/{groupId}/accounts/{accountId}`, membros ativos podem ler,
-criar e atualizar o contrato exato de identificação. Criação exige grupo do
+criar e atualizar o contrato exato. Criação exige `accountType` no enum
+permitido, `includeInBalance` e `includeInNetWorth` booleanos, grupo do
 path, autor autenticado, estado ativo/não arquivado e timestamps do servidor.
-Updates preservam grupo, autor e criação; delete é bloqueado. Campos futuros de
-tipo, saldo, patrimônio e consolidação não são aceitos. A unicidade do nome
-normalizado é validada no domínio, com risco concorrente documentado.
+Updates preservam grupo, autor e criação e só admitem os campos mutáveis; delete
+é bloqueado. Documentos legados continuam legíveis, mas um update só é aceito
+quando o resultado final contém o contrato novo completo. Campos de saldo e
+consolidados futuros e quaisquer campos extras continuam bloqueados. A
+unicidade do nome normalizado é validada no domínio, com risco concorrente
+documentado.
 
 Funções conceituais das Rules:
 

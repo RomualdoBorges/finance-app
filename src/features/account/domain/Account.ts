@@ -1,3 +1,5 @@
+import type { AccountType } from './accountTypes'
+
 export const ACCOUNT_STATUSES = ['active', 'archived'] as const
 export type AccountStatus = (typeof ACCOUNT_STATUSES)[number]
 
@@ -10,6 +12,9 @@ export type Account = {
   readonly institutionName: string | null
   readonly icon: string | null
   readonly color: string | null
+  readonly accountType: AccountType
+  readonly includeInBalance: boolean
+  readonly includeInNetWorth: boolean
   readonly status: AccountStatus
   readonly isArchived: boolean
   readonly createdBy: string
@@ -19,7 +24,14 @@ export type Account = {
 
 export type CreateAccountInput = Pick<
   Account,
-  'name' | 'description' | 'institutionName' | 'icon' | 'color'
+  | 'name'
+  | 'description'
+  | 'institutionName'
+  | 'icon'
+  | 'color'
+  | 'accountType'
+  | 'includeInBalance'
+  | 'includeInNetWorth'
 >
 
 export type UpdateAccountInput = CreateAccountInput & {
@@ -38,4 +50,7 @@ export type PersistAccountUpdate = Pick<
   | 'institutionName'
   | 'icon'
   | 'color'
+  | 'accountType'
+  | 'includeInBalance'
+  | 'includeInNetWorth'
 >

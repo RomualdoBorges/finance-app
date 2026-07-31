@@ -76,10 +76,13 @@ permanecem fora do escopo até a fase de grupos compartilhados.
 
 O documento fica em `financialGroups/{groupId}/accounts/{accountId}` e contém
 `groupId`, `name`, `normalizedName`, `description`, `institutionName`, `icon`,
-`color`, `status`, `isArchived`, `createdBy`, `createdAt` e `updatedAt`.
+`color`, `accountType`, `includeInBalance`, `includeInNetWorth`, `status`,
+`isArchived`, `createdBy`, `createdAt` e `updatedAt`.
 Campos opcionais são persistidos como `null`; datas usam `Firestore Timestamp`.
-Tipos, opções de consolidação, saldo inicial e saldos atual/projetado permanecem
-fora deste item. O contrato e as decisões estão em `docs/accounts.md`.
+O enum e os defaults das opções estão em `docs/accounts.md`. Documentos legados
+sem esses três campos são lidos como tipo `other` com ambas as opções `true` e
+são completados na próxima edição. Saldo inicial e saldos atual/projetado
+permanecem fora deste item.
 
 ### `categories` — Milestone 2
 

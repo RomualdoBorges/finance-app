@@ -14,6 +14,7 @@ import type {
 } from '../domain/Account'
 import { useAccountMutations } from '../hooks/useAccountMutations'
 import { useAccounts } from '../hooks/useAccounts'
+import { ACCOUNT_TYPE_LABELS } from '../domain/accountTypes'
 
 export function AccountsPage() {
   const { accounts, loading, error, refresh } = useAccounts()
@@ -49,8 +50,8 @@ export function AccountsPage() {
         <div>
           <h1 className="text-2xl font-bold">Contas</h1>
           <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-            Cadastre e organize suas contas. Valores e opções financeiras serão
-            configurados em etapas posteriores.
+            Cadastre e organize suas contas e opções de participação em futuros
+            consolidados. Nenhum valor financeiro é calculado nesta etapa.
           </p>
         </div>
         {!loading && error === null ? (
@@ -148,6 +149,18 @@ function AccountSection({
                   <p className="font-medium">{account.name}</p>
                   <p className="text-sm text-muted-foreground">
                     {account.institutionName ?? 'Sem instituição informada'}
+                  </p>
+                  <p className="mt-1 text-sm">
+                    {ACCOUNT_TYPE_LABELS[account.accountType]}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {account.includeInBalance
+                      ? 'Inclui no saldo'
+                      : 'Não inclui no saldo'}
+                    {' · '}
+                    {account.includeInNetWorth
+                      ? 'Inclui no patrimônio'
+                      : 'Não inclui no patrimônio'}
                   </p>
                   {account.isArchived ? (
                     <p className="mt-1 text-xs font-medium">Arquivada</p>

@@ -60,7 +60,7 @@ Nenhum item está concluído por existir no template. Checkboxes só são marcad
 - [x] Categorias padrão, personalizadas e subcategorias
 - [x] Criação, edição e arquivamento de categoria usada
 - [x] Cadastro, edição e arquivamento de contas
-- [ ] Tipos e opções de inclusão em saldo/patrimônio
+- [x] Tipos e opções de inclusão em saldo/patrimônio
 - [ ] Saldo inicial
 - [ ] Campos consolidados atual e projetado protegidos
 

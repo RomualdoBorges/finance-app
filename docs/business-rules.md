@@ -41,7 +41,10 @@
   nome, mas só pode ser restaurada se não houver conflito;
 - arquivamento e restauração são idempotentes;
 - exclusão física não é oferecida, preservando futuras referências históricas;
-- tipos, saldos e opções de inclusão em consolidações permanecem fora deste item.
+- `accountType` usa enum fechado; os defaults de inclusão são centralizados por tipo;
+- opções manuais de inclusão em saldo e patrimônio prevalecem sobre defaults;
+- cartão de crédito será tratado futuramente como passivo no patrimônio;
+- as opções não calculam saldo nem patrimônio; esses consolidados permanecem fora deste item.
 
 ## Cartões e faturas — Fase 2
 

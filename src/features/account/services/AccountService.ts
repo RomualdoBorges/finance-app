@@ -101,6 +101,9 @@ export class AccountService {
       institutionName: values.institutionName,
       icon: values.icon,
       color: values.color,
+      accountType: values.accountType,
+      includeInBalance: values.includeInBalance,
+      includeInNetWorth: values.includeInNetWorth,
     })
   }
 

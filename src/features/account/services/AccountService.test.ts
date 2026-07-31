@@ -14,6 +14,9 @@ const base = (overrides: Partial<Account> = {}): Account => ({
   institutionName: null,
   icon: null,
   color: null,
+  accountType: 'other',
+  includeInBalance: true,
+  includeInNetWorth: true,
   status: 'active',
   isArchived: false,
   createdBy: 'u1',
@@ -47,6 +50,9 @@ describe('AccountService', () => {
         institutionName: null,
         icon: null,
         color: null,
+        accountType: 'credit_card',
+        includeInBalance: false,
+        includeInNetWorth: true,
       },
     )
     expect(repository.create).toHaveBeenCalledWith(
@@ -56,6 +62,9 @@ describe('AccountService', () => {
         normalizedName: 'conta agil',
         status: 'active',
         isArchived: false,
+        accountType: 'credit_card',
+        includeInBalance: false,
+        includeInNetWorth: true,
       }),
     )
   })
@@ -70,6 +79,9 @@ describe('AccountService', () => {
           institutionName: null,
           icon: null,
           color: null,
+          accountType: 'other',
+          includeInBalance: true,
+          includeInNetWorth: true,
         },
       ),
     ).rejects.toMatchObject({ code: 'duplicate' })
@@ -83,6 +95,9 @@ describe('AccountService', () => {
           institutionName: null,
           icon: null,
           color: null,
+          accountType: 'other',
+          includeInBalance: true,
+          includeInNetWorth: true,
         },
       ),
     ).resolves.toBeDefined()
@@ -98,12 +113,21 @@ describe('AccountService', () => {
         institutionName: 'B',
         icon: null,
         color: null,
+        accountType: 'investment',
+        includeInBalance: true,
+        includeInNetWorth: false,
       },
     )
     expect(repository.update).toHaveBeenCalledWith(
       'g1',
       'a1',
-      expect.objectContaining({ name: 'Nova', normalizedName: 'nova' }),
+      expect.objectContaining({
+        name: 'Nova',
+        normalizedName: 'nova',
+        accountType: 'investment',
+        includeInBalance: true,
+        includeInNetWorth: false,
+      }),
     )
   })
   it('arquiva e restaura de modo idempotente', async () => {

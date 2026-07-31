@@ -19,6 +19,11 @@ import {
   type PersistAccountUpdate,
 } from '../domain/Account'
 import { AccountError, type AccountErrorCode } from '../domain/AccountError'
+import {
+  ACCOUNT_TYPES,
+  getAccountTypeDefaults,
+  type AccountType,
+} from '../domain/accountTypes'
 import type { AccountRepository } from './AccountRepository'
 
 type Snapshot = {
@@ -107,6 +112,12 @@ export function mapAccountSnapshot(
   const data = snapshot.data as Readonly<Record<string, unknown>>
   const createdAt = date(data['createdAt'])
   const updatedAt = date(data['updatedAt'])
+  const legacyDefaults = getAccountTypeDefaults('other')
+  const accountType = data['accountType'] ?? 'other'
+  const includeInBalance =
+    data['includeInBalance'] ?? legacyDefaults.includeInBalance
+  const includeInNetWorth =
+    data['includeInNetWorth'] ?? legacyDefaults.includeInNetWorth
   if (
     snapshot.id.length === 0 ||
     data['groupId'] !== groupId ||
@@ -116,6 +127,9 @@ export function mapAccountSnapshot(
     !nullableString(data['institutionName']) ||
     !nullableString(data['icon']) ||
     !nullableString(data['color']) ||
+    !ACCOUNT_TYPES.includes(accountType as AccountType) ||
+    typeof includeInBalance !== 'boolean' ||
+    typeof includeInNetWorth !== 'boolean' ||
     !ACCOUNT_STATUSES.includes(data['status'] as Account['status']) ||
     typeof data['isArchived'] !== 'boolean' ||
     (data['status'] === 'archived') !== data['isArchived'] ||
@@ -133,6 +147,9 @@ export function mapAccountSnapshot(
     institutionName: data['institutionName'],
     icon: data['icon'],
     color: data['color'],
+    accountType: accountType as AccountType,
+    includeInBalance,
+    includeInNetWorth,
     status: data['status'] as Account['status'],
     isArchived: data['isArchived'],
     createdBy: data['createdBy'],

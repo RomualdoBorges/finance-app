@@ -9,11 +9,13 @@ import { AccountsPage } from './AccountsPage'
 const useAccounts = vi.fn()
 const archiveAccount = vi.fn().mockResolvedValue(undefined)
 const restoreAccount = vi.fn().mockResolvedValue(undefined)
+const createAccount = vi.fn().mockResolvedValue(undefined)
+const updateAccount = vi.fn().mockResolvedValue(undefined)
 vi.mock('../hooks/useAccounts', () => ({ useAccounts: () => useAccounts() }))
 vi.mock('../hooks/useAccountMutations', () => ({
   useAccountMutations: () => ({
-    createAccount: vi.fn(),
-    updateAccount: vi.fn(),
+    createAccount,
+    updateAccount,
     archiveAccount,
     restoreAccount,
     pending: false,
@@ -29,6 +31,9 @@ const account: Account = {
   institutionName: 'Banco',
   icon: null,
   color: null,
+  accountType: 'checking',
+  includeInBalance: true,
+  includeInNetWorth: true,
   status: 'active',
   isArchived: false,
   createdBy: 'u1',
@@ -37,6 +42,7 @@ const account: Account = {
 }
 describe('AccountsPage', () => {
   beforeEach(() => {
+    vi.clearAllMocks()
     useAccounts.mockReturnValue({
       accounts: [
         account,
@@ -53,10 +59,39 @@ describe('AccountsPage', () => {
       refresh: vi.fn(),
     })
   })
+  it('aplica defaults por tipo sem sobrescrever opção personalizada', async () => {
+    renderWithProviders(<AccountsPage />)
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Adicionar conta' }),
+    )
+    const balance = screen.getByRole('checkbox', {
+      name: /Incluir no saldo/,
+    })
+    const netWorth = screen.getByRole('checkbox', {
+      name: /Incluir no patrimônio/,
+    })
+    expect(balance).toBeChecked()
+    expect(netWorth).toBeChecked()
+    await userEvent.selectOptions(
+      screen.getByRole('combobox', { name: 'Tipo da conta' }),
+      'credit_card',
+    )
+    expect(balance).not.toBeChecked()
+    expect(netWorth).toBeChecked()
+    await userEvent.click(netWorth)
+    await userEvent.selectOptions(
+      screen.getByRole('combobox', { name: 'Tipo da conta' }),
+      'checking',
+    )
+    expect(balance).toBeChecked()
+    expect(netWorth).not.toBeChecked()
+  })
   it('lista ativas e arquivadas, sem exclusão física', () => {
     renderWithProviders(<AccountsPage />)
     expect(screen.getByText('Contas ativas')).toBeInTheDocument()
     expect(screen.getByText('Contas arquivadas')).toBeInTheDocument()
+    expect(screen.getAllByText('Conta corrente')).toHaveLength(2)
+    expect(screen.getAllByText(/Inclui no saldo/)).toHaveLength(2)
     expect(
       screen.queryByRole('button', { name: /excluir/i }),
     ).not.toBeInTheDocument()

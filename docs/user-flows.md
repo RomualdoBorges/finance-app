@@ -76,12 +76,12 @@ Nesta etapa, a exclusão remove somente a conta do Firebase Authentication. O do
 
 ### Contas
 
-1. Usuário abre contas e cria ou edita nome, descrição, instituição, ícone e cor.
-2. Aplicação normaliza o nome e valida duplicidade entre contas ativas.
-3. Usuário confirma o arquivamento; a conta permanece visível no gerenciamento.
-4. Ao restaurar, a duplicidade é validada novamente.
-5. Não há exclusão física. Tipos, opções de consolidação e saldos ficam para os
-   próximos itens do roadmap.
+1. Usuário cria ou edita identificação, tipo e opções de inclusão futura em saldo e patrimônio.
+2. Selecionar um tipo aplica defaults apenas às opções ainda não personalizadas.
+3. Aplicação normaliza o nome e valida duplicidade entre contas ativas.
+4. Usuário confirma o arquivamento; a conta permanece visível no gerenciamento.
+5. Ao restaurar, a duplicidade é validada novamente.
+6. Não há exclusão física nem cálculo de saldo ou patrimônio nesta etapa.
 
 ### Categorias
 

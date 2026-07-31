@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { ACCOUNT_TYPES } from './accountTypes'
 
 const identifierSchema = z
   .string()
@@ -56,6 +57,15 @@ export const createAccountSchema = z
       ])
       .nullish()
       .transform((value) => value || null),
+    accountType: z.enum(ACCOUNT_TYPES, {
+      message: 'Selecione um tipo de conta válido.',
+    }),
+    includeInBalance: z.boolean({
+      message: 'Informe se a conta deve ser incluída no saldo.',
+    }),
+    includeInNetWorth: z.boolean({
+      message: 'Informe se a conta deve ser incluída no patrimônio.',
+    }),
   })
   .strict()
 

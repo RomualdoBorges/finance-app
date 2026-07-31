@@ -15,6 +15,9 @@ const data = {
   institutionName: null,
   icon: null,
   color: null,
+  accountType: 'checking',
+  includeInBalance: true,
+  includeInNetWorth: true,
   status: 'active',
   isArchived: false,
   createdBy: 'u1',
@@ -58,6 +61,9 @@ describe('FirestoreAccountRepository', () => {
       institutionName: null,
       icon: null,
       color: null,
+      accountType: 'investment',
+      includeInBalance: false,
+      includeInNetWorth: true,
     })
     expect(update).toHaveBeenLastCalledWith(
       'g1/a1',
@@ -71,6 +77,32 @@ describe('FirestoreAccountRepository', () => {
       status: 'archived',
       isArchived: true,
       updatedAt: 'SERVER',
+    })
+  })
+
+  it('aplica fallback de outra conta ao ler documento legado', async () => {
+    const legacy = { ...data } as Partial<typeof data>
+    delete legacy.accountType
+    delete legacy.includeInBalance
+    delete legacy.includeInNetWorth
+    const ops = {
+      collection: vi.fn(() => 'accounts'),
+      reference: vi.fn(),
+      newReference: vi.fn(),
+      get: vi.fn(),
+      list: vi.fn(async () => [{ id: 'legacy', exists: true, data: legacy }]),
+      set: vi.fn(),
+      update: vi.fn(),
+      serverTimestamp: vi.fn(),
+    } as unknown as FirestoreAccountOperations
+    const [account] = await new FirestoreAccountRepository(
+      {} as Firestore,
+      ops,
+    ).listByGroup('g1')
+    expect(account).toMatchObject({
+      accountType: 'other',
+      includeInBalance: true,
+      includeInNetWorth: true,
     })
   })
 })

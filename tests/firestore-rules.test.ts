@@ -99,6 +99,7 @@ function accountData(groupId: string, userId: string, overrides: Readonly<Record
   return {
     groupId, name: 'Conta principal', normalizedName: 'conta principal',
     description: null, institutionName: 'Banco', icon: null, color: '#2563eb',
+    accountType: 'checking', includeInBalance: true, includeInNetWorth: true,
     status: 'active', isArchived: false, createdBy: userId,
     createdAt: serverTimestamp(), updatedAt: serverTimestamp(), ...overrides,
   }
@@ -669,10 +670,46 @@ describe('Firestore Rules de contas', () => {
       accountData('group-a', 'user-1', { currentBalance: 0 }),
       accountData('group-a', 'user-1', { createdAt: Timestamp.now() }),
       accountData('group-a', 'user-1', { status: 'archived', isArchived: false }),
+      accountData('group-a', 'user-1', { accountType: 'payment' }),
+      accountData('group-a', 'user-1', { includeInBalance: 'yes' }),
+      accountData('group-a', 'user-1', { includeInNetWorth: 1 }),
+      accountData('group-a', 'user-1', { projectedBalance: 0 }),
     ]
+    const missingFlag = accountData('group-a', 'user-1') as Record<string, unknown>
+    delete missingFlag.includeInBalance
+    invalid.push(missingFlag)
     for (const [index, value] of invalid.entries()) {
       await assertFails(setDoc(accountRef(owner, 'group-a', `invalid-${index}`), value))
     }
+  })
+
+  it('lê documento legado e permite atualizá-lo somente para o contrato novo', async () => {
+    await seedPersonalGroup('group-a', 'user-1')
+    const owner = environment.authenticatedContext('user-1').firestore()
+    const reference = accountRef(owner, 'group-a', 'legacy')
+    await environment.withSecurityRulesDisabled(async (context) => {
+      const legacy = accountData('group-a', 'user-1') as Record<string, unknown>
+      delete legacy.accountType
+      delete legacy.includeInBalance
+      delete legacy.includeInNetWorth
+      await setDoc(accountRef(context.firestore(), 'group-a', 'legacy'), {
+        ...legacy,
+        createdAt: Timestamp.fromDate(new Date('2026-01-01T00:00:00Z')),
+        updatedAt: Timestamp.fromDate(new Date('2026-01-01T00:00:00Z')),
+      })
+    })
+    await assertSucceeds(getDoc(reference))
+    await assertFails(
+      updateDoc(reference, { name: 'Ainda legado', updatedAt: serverTimestamp() }),
+    )
+    await assertSucceeds(
+      updateDoc(reference, {
+        accountType: 'other',
+        includeInBalance: true,
+        includeInNetWorth: true,
+        updatedAt: serverTimestamp(),
+      }),
+    )
   })
 
   it('preserva campos protegidos e bloqueia delete físico e escrita de outro grupo', async () => {
@@ -684,7 +721,7 @@ describe('Firestore Rules de contas', () => {
     for (const change of [
       { groupId: 'group-b', updatedAt: serverTimestamp() },
       { createdBy: 'user-2', updatedAt: serverTimestamp() },
-      { createdAt: serverTimestamp(), updatedAt: serverTimestamp() },
+      { createdAt: Timestamp.fromMillis(0), updatedAt: serverTimestamp() },
     ]) await assertFails(updateDoc(reference, change))
     await assertFails(deleteDoc(reference))
     await assertFails(setDoc(accountRef(owner, 'group-b', 'foreign'), accountData('group-b', 'user-1')))
