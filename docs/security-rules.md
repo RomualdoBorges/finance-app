@@ -170,4 +170,12 @@ Membros ativos podem ler `financialGroups/{groupId}/transactions`. A criação e
 
 `competenceDate`, `dueDate` e `paymentDate` são obrigatórias em novas criações e aceitam somente strings com estrutura `YYYY-MM-DD`; `Timestamp`, `null` e outros formatos são bloqueados. A existência real do dia no calendário é validada no domínio, pois as Rules fazem somente a validação estrutural adequada a esse ambiente. Documentos legados sem as propriedades continuam legíveis, sem migração. As datas não autorizam transições de estado nem efeitos financeiros.
 
-Updates e deletes permanecem bloqueados. Campos futuros, inclusive status, saldos e vínculos de transferência/recorrência, continuam rejeitados por não integrarem a lista permitida.
+Novas criações exigem `status` igual a `planned`, `pending` ou `confirmed`.
+`canceled` fica reservado a uma ação futura confiável e `overdue` nunca pode ser
+persistido, pois é derivado na leitura. Documentos legados sem status continuam
+legíveis. Campos de transição como `confirmedAt`, `canceledAt` e
+`statusHistory` são rejeitados.
+
+Updates e deletes permanecem bloqueados. Saldos e vínculos de
+transferência/recorrência continuam rejeitados por não integrarem a lista
+permitida.

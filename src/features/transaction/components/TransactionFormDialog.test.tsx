@@ -65,6 +65,12 @@ describe('TransactionFormDialog', () => {
     expect(screen.getByLabelText('Competência')).toHaveValue('2026-07-31')
     expect(screen.getByLabelText('Vencimento')).toHaveValue('2026-07-31')
     expect(screen.getByLabelText('Pagamento')).toHaveValue('2026-07-31')
+    expect(screen.getByLabelText('Status')).toHaveValue('pending')
+    expect(screen.getByLabelText('Status')).toHaveTextContent('Planejado')
+    expect(screen.getByLabelText('Status')).toHaveTextContent('Pendente')
+    expect(screen.getByLabelText('Status')).toHaveTextContent('Confirmado')
+    expect(screen.getByLabelText('Status')).not.toHaveTextContent('Vencido')
+    expect(screen.getByLabelText('Status')).not.toHaveTextContent('Cancelado')
 
     await user.type(screen.getByLabelText('Descrição'), 'Mercado')
     await user.type(screen.getByLabelText('Valor'), '150,50')
@@ -80,6 +86,7 @@ describe('TransactionFormDialog', () => {
 
     expect(onSubmit).toHaveBeenCalledWith(
       expect.objectContaining({
+        status: 'pending',
         competenceDate: '2026-07-30',
         dueDate: '2026-07-29',
         paymentDate: '2026-07-28',

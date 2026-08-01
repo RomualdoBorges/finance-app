@@ -384,17 +384,20 @@ service cloud.firestore {
       return request.resource.data.keys().hasOnly([
           'groupId', 'type', 'description', 'normalizedDescription',
           'amountMinor', 'accountId', 'categoryId', 'notes',
+          'status',
           'competenceDate', 'dueDate', 'paymentDate',
           'createdBy', 'createdAt', 'updatedAt'
         ])
         && request.resource.data.keys().hasAll([
           'groupId', 'type', 'description', 'normalizedDescription',
           'amountMinor', 'accountId', 'categoryId', 'notes',
+          'status',
           'competenceDate', 'dueDate', 'paymentDate',
           'createdBy', 'createdAt', 'updatedAt'
         ])
         && request.resource.data.groupId == groupId
         && request.resource.data.type in ['income', 'expense']
+        && request.resource.data.status in ['planned', 'pending', 'confirmed']
         && request.resource.data.description is string
         && request.resource.data.description.size() >= 2
         && request.resource.data.description.size() <= 120

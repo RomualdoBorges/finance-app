@@ -1,3 +1,8 @@
+import type {
+  CreatableTransactionStatus,
+  PersistedTransactionStatus,
+} from './transactionStatus'
+
 export const TRANSACTION_TYPES = ['income', 'expense'] as const
 export type TransactionType = (typeof TRANSACTION_TYPES)[number]
 
@@ -18,6 +23,7 @@ export type Transaction = {
   readonly accountId: string
   readonly categoryId: string
   readonly notes: string | null
+  readonly status: PersistedTransactionStatus
   readonly competenceDate: string | null
   readonly dueDate: string | null
   readonly paymentDate: string | null
@@ -30,6 +36,7 @@ export type CreateTransactionInput = Pick<
   Transaction,
   'type' | 'description' | 'amountMinor' | 'accountId' | 'categoryId' | 'notes'
 > & {
+  readonly status: CreatableTransactionStatus
   readonly competenceDate: string
   readonly dueDate: string
   readonly paymentDate: string

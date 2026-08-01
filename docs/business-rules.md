@@ -14,7 +14,7 @@
 - lançamento pendente afeta `projectedBalance`, não o saldo atual;
 - planejados participam apenas das projeções definidas pelo produto, sem se tornarem confirmados implicitamente;
 - criação, edição, confirmação, cancelamento, estorno e reembolso ajustam conta, orçamento e resumo de modo consistente e auditável;
-- lançamentos vencidos podem ser marcados por Scheduled Function;
+- vencido é derivado de `pending` com `dueDate` anterior à data civil atual e não é persistido;
 - o saldo inicial é persistido em centavos BRL com data civil `YYYY-MM-DD`; ele
   integrará a base consolidada da conta, mas não há consolidação nesta etapa;
 - `currentBalance` e `projectedBalance` são atualizados transacionalmente por backend confiável.
@@ -153,3 +153,11 @@
 - conta e categoria devem existir, estar ativas e pertencer ao grupo; a categoria deve ser compatível com o tipo do lançamento. Categorias padrão, personalizadas e subcategorias ativas são aceitas.
 - a validação é repetida no envio para detectar arquivamento ocorrido com o formulário aberto.
 - a criação não incrementa `usageCount`, não altera conta, saldo, patrimônio, orçamento, resumo ou qualquer agregado.
+# Estados de lançamentos
+
+- Estados persistidos: `planned`, `pending`, `confirmed` e `canceled`.
+- Criações manuais aceitam apenas `planned`, `pending` e `confirmed`, com
+  `pending` como padrão; o status não é inferido das datas.
+- `overdue` é somente uma projeção de `pending` com vencimento anterior à data
+  civil atual e não é armazenado.
+- Nesta etapa não existem transições nem efeitos em saldos e agregados.

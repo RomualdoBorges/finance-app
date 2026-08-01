@@ -213,3 +213,11 @@ O `groupId` está implícito no caminho das subcoleções; consultas `collection
 `financialGroups/{groupId}/transactions/{transactionId}` guarda receitas e despesas do grupo. O contrato inicial contém `groupId`, `type` (`income` ou `expense`), `description`, `normalizedDescription`, `amountMinor`, `accountId`, `categoryId`, `notes`, `createdBy`, `createdAt` e `updatedAt`. O valor é inteiro, positivo, em centavos BRL; o tipo determina entrada ou saída. Conta e categoria são referências por ID a documentos ativos do mesmo grupo e a categoria deve ter o mesmo tipo.
 
 Esta etapa não possui datas financeiras, status, edição, exclusão, transferências, saldos ou agregados. A listagem provisória lê no máximo os 50 documentos mais recentes por `createdAt` descendente.
+# Estado de lançamentos
+
+`financialGroups/{groupId}/transactions/{transactionId}` passa a exigir
+`status` nas novas criações. O valor persistido pelo cliente é `planned`,
+`pending` ou `confirmed`; `canceled` pertence ao contrato persistido para uso
+futuro, porém sua criação direta está bloqueada. `overdue` é derivado no domínio
+e nunca integra o documento. Leituras legadas sem o campo usam `pending` apenas
+em memória.

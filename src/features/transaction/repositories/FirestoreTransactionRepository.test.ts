@@ -13,6 +13,7 @@ const timestamp = (date = new Date('2026-07-31T10:00:00Z')) => ({
 const input = {
   groupId: 'group-1',
   type: 'expense' as const,
+  status: 'pending' as const,
   description: 'Mercado',
   normalizedDescription: 'mercado',
   amountMinor: 15_050,
@@ -100,6 +101,24 @@ describe('FirestoreTransactionRepository', () => {
         paymentDate: null,
       }),
     ])
+  })
+  it('usa pending em memória para status legado ausente', async () => {
+    const { ops, repository } = setup()
+    const { status, ...legacy } = snapshot.data
+    void status
+    vi.mocked(ops.list).mockResolvedValue([{ ...snapshot, data: legacy }])
+    await expect(repository.listRecentByGroup('group-1')).resolves.toEqual([
+      expect.objectContaining({ status: 'pending' }),
+    ])
+  })
+  it('rejeita status persistido inválido', async () => {
+    const { ops, repository } = setup()
+    vi.mocked(ops.list).mockResolvedValue([
+      { ...snapshot, data: { ...snapshot.data, status: 'overdue' } },
+    ])
+    await expect(repository.listRecentByGroup('group-1')).rejects.toMatchObject(
+      { code: 'invalid-data' },
+    )
   })
   it.each([
     ['competenceDate', '2026-02-30'],

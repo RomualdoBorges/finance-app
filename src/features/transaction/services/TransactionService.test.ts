@@ -46,6 +46,7 @@ const category = {
 }
 const input = {
   type: 'income' as const,
+  status: 'pending' as const,
   description: ' Salário mensal ',
   amountMinor: 100_000,
   accountId: account.id,
@@ -84,6 +85,7 @@ describe('TransactionService', () => {
       groupId: 'group-1',
       createdBy: 'user-1',
       type: 'income',
+      status: 'pending',
       description: 'Salário mensal',
       normalizedDescription: 'salario mensal',
       amountMinor: 100_000,

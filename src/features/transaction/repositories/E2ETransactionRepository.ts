@@ -4,6 +4,10 @@ import type {
 } from '../domain/Transaction'
 import type { TransactionRepository } from './TransactionRepository'
 import { RECENT_TRANSACTION_LIMIT } from './FirestoreTransactionRepository'
+import {
+  DEFAULT_TRANSACTION_STATUS,
+  PERSISTED_TRANSACTION_STATUSES,
+} from '../domain/transactionStatus'
 
 export class E2ETransactionRepository implements TransactionRepository {
   private readonly storageKey = 'finance-app:e2e-transactions'
@@ -21,6 +25,15 @@ export class E2ETransactionRepository implements TransactionRepository {
         >
       ).map((item) => ({
         ...item,
+        status:
+          item.status === undefined
+            ? DEFAULT_TRANSACTION_STATUS
+            : (PERSISTED_TRANSACTION_STATUSES.find(
+                (status) => status === item.status,
+              ) ??
+              (() => {
+                throw new TypeError('Status inválido.')
+              })()),
         createdAt: new Date(item.createdAt),
         updatedAt: new Date(item.updatedAt),
       }))

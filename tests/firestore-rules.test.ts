@@ -150,6 +150,7 @@ function transactionData(
     accountId: 'account-1',
     categoryId: 'category-1',
     notes: null,
+    status: 'pending',
     competenceDate: '2026-07-31',
     dueDate: '2026-08-05',
     paymentDate: '2026-08-05',
@@ -984,6 +985,30 @@ describe('Firestore Rules de lançamentos', () => {
     )
   })
 
+  it.each(['planned', 'pending', 'confirmed'])(
+    'permite criar lançamento %s',
+    async (status) => {
+      await seedReferences()
+      const owner = environment.authenticatedContext('user-1').firestore()
+      await assertSucceeds(
+        setDoc(
+          transactionRef(owner, 'group-a', `status-${status}`),
+          transactionData('group-a', 'user-1', { status }),
+        ),
+      )
+    },
+  )
+
+  it('bloqueia status ausente em nova criação', async () => {
+    await seedReferences()
+    const owner = environment.authenticatedContext('user-1').firestore()
+    const data = transactionData('group-a', 'user-1') as Record<string, unknown>
+    delete data.status
+    await assertFails(
+      setDoc(transactionRef(owner, 'group-a', 'no-status'), data),
+    )
+  })
+
   it.each([
     { type: 'transfer' },
     { amountMinor: 0 },
@@ -992,7 +1017,11 @@ describe('Firestore Rules de lançamentos', () => {
     { amountMinor: 9000000000001 },
     { groupId: 'group-b' },
     { createdBy: 'user-2' },
-    { status: 'confirmed' },
+    { status: 'canceled' },
+    { status: 'overdue' },
+    { status: 'invalid' },
+    { confirmedAt: serverTimestamp() },
+    { canceledAt: serverTimestamp() },
     { competenceDate: '31/07/2026' },
     { dueDate: '2026-13-01' },
     { paymentDate: Timestamp.fromMillis(0) },
@@ -1012,7 +1041,10 @@ describe('Firestore Rules de lançamentos', () => {
     await seedReferences()
     const owner = environment.authenticatedContext('user-1').firestore()
     for (const field of ['competenceDate', 'dueDate', 'paymentDate']) {
-      const data = transactionData('group-a', 'user-1') as Record<string, unknown>
+      const data = transactionData('group-a', 'user-1') as Record<
+        string,
+        unknown
+      >
       delete data[field]
       await assertFails(
         setDoc(transactionRef(owner, 'group-a', crypto.randomUUID()), data),
@@ -1025,14 +1057,19 @@ describe('Firestore Rules de lançamentos', () => {
     const owner = environment.authenticatedContext('user-1').firestore()
     const reference = transactionRef(owner, 'group-a', 'legacy')
     await environment.withSecurityRulesDisabled(async (context) => {
-      const data = transactionData('group-a', 'user-1') as Record<string, unknown>
+      const data = transactionData('group-a', 'user-1') as Record<
+        string,
+        unknown
+      >
       delete data.competenceDate
       delete data.dueDate
       delete data.paymentDate
-      await setDoc(
-        transactionRef(context.firestore(), 'group-a', 'legacy'),
-        { ...data, createdAt: Timestamp.fromMillis(0), updatedAt: Timestamp.fromMillis(0) },
-      )
+      delete data.status
+      await setDoc(transactionRef(context.firestore(), 'group-a', 'legacy'), {
+        ...data,
+        createdAt: Timestamp.fromMillis(0),
+        updatedAt: Timestamp.fromMillis(0),
+      })
     })
     await assertSucceeds(getDoc(reference))
   })

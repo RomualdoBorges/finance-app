@@ -2,6 +2,7 @@ import { z } from 'zod'
 import { MAX_MONEY_MINOR } from '../../../shared/money/money'
 import { isValidCivilDate } from '../../../lib/date'
 import { TRANSACTION_TYPES } from './Transaction'
+import { CREATABLE_TRANSACTION_STATUSES } from './transactionStatus'
 
 const identifier = z
   .string()
@@ -26,6 +27,9 @@ export const createTransactionSchema = z
   .object({
     type: z.enum(TRANSACTION_TYPES, {
       message: 'Selecione Receita ou Despesa.',
+    }),
+    status: z.enum(CREATABLE_TRANSACTION_STATUSES, {
+      message: 'Selecione Planejado, Pendente ou Confirmado.',
     }),
     description: z
       .string()

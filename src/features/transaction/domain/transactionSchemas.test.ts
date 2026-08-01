@@ -6,6 +6,7 @@ import { createTransactionSchema } from './transactionSchemas'
 
 const valid = {
   type: 'income',
+  status: 'pending',
   description: 'Salário',
   amountMinor: 100_000,
   accountId: 'account-1',

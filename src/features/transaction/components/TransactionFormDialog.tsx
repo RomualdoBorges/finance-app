@@ -16,6 +16,11 @@ import { TransactionError } from '../domain/TransactionError'
 import { createTransactionSchema } from '../domain/transactionSchemas'
 import { parseCurrencyToMinor } from '../../../shared/money/money'
 import { getTodayCivilDate } from '../../../lib/date'
+import {
+  CREATABLE_TRANSACTION_STATUSES,
+  DEFAULT_TRANSACTION_STATUS,
+  getTransactionStatusLabel,
+} from '../domain/transactionStatus'
 
 const formSchema = createTransactionSchema.omit({ amountMinor: true }).extend({
   amount: z.string().refine((value) => {
@@ -51,6 +56,7 @@ export function TransactionFormDialog({
     resolver: zodResolver(formSchema),
     defaultValues: {
       type: 'expense',
+      status: DEFAULT_TRANSACTION_STATUS,
       description: '',
       amount: '',
       accountId: '',
@@ -69,6 +75,7 @@ export function TransactionFormDialog({
     try {
       await onSubmit({
         type: values.type,
+        status: values.status,
         description: values.description,
         amountMinor: parseCurrencyToMinor(values.amount)!,
         accountId: values.accountId,
@@ -140,6 +147,18 @@ export function TransactionFormDialog({
                 {TRANSACTION_TYPES.map((item) => (
                   <option key={item} value={item}>
                     {TRANSACTION_TYPE_LABELS[item]}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Status" error={errors.status?.message}>
+              <select
+                className="mt-1 min-h-10 w-full rounded-md border border-border bg-background px-3"
+                {...register('status')}
+              >
+                {CREATABLE_TRANSACTION_STATUSES.map((item) => (
+                  <option key={item} value={item}>
+                    {getTransactionStatusLabel(item)}
                   </option>
                 ))}
               </select>

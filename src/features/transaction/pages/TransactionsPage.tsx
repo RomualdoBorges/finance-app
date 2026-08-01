@@ -12,6 +12,11 @@ import { TransactionFormDialog } from '../components/TransactionFormDialog'
 import { TRANSACTION_TYPE_LABELS } from '../domain/Transaction'
 import { useCreateTransaction } from '../hooks/useCreateTransaction'
 import { useTransactions } from '../hooks/useTransactions'
+import {
+  getTransactionDisplayStatus,
+  getTransactionStatusLabel,
+} from '../domain/transactionStatus'
+import { getTodayCivilDate } from '../../../lib/date'
 
 export function TransactionsPage() {
   const listing = useTransactions()
@@ -27,6 +32,7 @@ export function TransactionsPage() {
   const categoryNames = new Map(
     categories.categories.map((item) => [item.id, item.name]),
   )
+  const today = getTodayCivilDate()
   return (
     <div className="space-y-8">
       <header className="flex flex-wrap items-start justify-between gap-4">
@@ -91,6 +97,14 @@ export function TransactionsPage() {
                 key={item.id}
               >
                 <p className="font-medium">{item.description}</p>
+                <p className="mt-1 text-sm">
+                  Status:{' '}
+                  <span className="rounded-full border border-border px-2 py-0.5 font-medium">
+                    {getTransactionStatusLabel(
+                      getTransactionDisplayStatus(item, today),
+                    )}
+                  </span>
+                </p>
                 <p className="mt-1 text-sm">
                   <span className="font-semibold">
                     {TRANSACTION_TYPE_LABELS[item.type]}

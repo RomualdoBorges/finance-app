@@ -19,6 +19,10 @@ import {
   type TransactionType,
 } from '../domain/Transaction'
 import {
+  DEFAULT_TRANSACTION_STATUS,
+  PERSISTED_TRANSACTION_STATUSES,
+} from '../domain/transactionStatus'
+import {
   TransactionError,
   type TransactionErrorCode,
 } from '../domain/TransactionError'
@@ -98,7 +102,12 @@ export function mapTransactionSnapshot(
   const createdAt = date(data['createdAt'])
   const updatedAt = date(data['updatedAt'])
   const parsed = createTransactionSchema
-    .omit({ competenceDate: true, dueDate: true, paymentDate: true })
+    .omit({
+      competenceDate: true,
+      dueDate: true,
+      paymentDate: true,
+      status: true,
+    })
     .safeParse({
       type: data['type'],
       description: data['description'],
@@ -113,6 +122,12 @@ export function mapTransactionSnapshot(
     if (!result.success) throw new TransactionError('invalid-data')
     return result.data
   }
+  const rawStatus = data['status']
+  const status =
+    rawStatus === undefined
+      ? DEFAULT_TRANSACTION_STATUS
+      : PERSISTED_TRANSACTION_STATUSES.find((item) => item === rawStatus)
+  if (status === undefined) throw new TransactionError('invalid-data')
   if (
     snapshot.id.length === 0 ||
     data['groupId'] !== groupId ||
@@ -130,6 +145,7 @@ export function mapTransactionSnapshot(
     type: data['type'] as TransactionType,
     normalizedDescription: data['normalizedDescription'],
     createdBy: data['createdBy'],
+    status,
     competenceDate: legacyDate('competenceDate'),
     dueDate: legacyDate('dueDate'),
     paymentDate: legacyDate('paymentDate'),
