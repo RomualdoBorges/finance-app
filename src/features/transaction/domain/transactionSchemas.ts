@@ -54,3 +54,24 @@ export const createTransactionSchema = z
     paymentDate: civilDateSchema,
   })
   .strict()
+
+export const updateTransactionSchema = createTransactionSchema.omit({
+  status: true,
+})
+export const cancelTransactionSchema = z
+  .object({
+    cancellationReason: z.string().trim().min(2).max(500),
+  })
+  .strict()
+export const oppositeTransactionSchema = z
+  .object({
+    accountId: identifier,
+    categoryId: identifier,
+    notes: z
+      .string()
+      .trim()
+      .max(500)
+      .nullish()
+      .transform((value) => value || null),
+  })
+  .strict()

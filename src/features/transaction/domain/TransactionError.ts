@@ -10,6 +10,12 @@ export type TransactionErrorCode =
   | 'unauthenticated'
   | 'unavailable'
   | 'unknown'
+  | 'transaction-not-found'
+  | 'already-confirmed'
+  | 'transaction-canceled'
+  | 'operation-not-allowed'
+  | 'reversal-exists'
+  | 'refund-exists'
 
 const messages: Readonly<Record<TransactionErrorCode, string>> = {
   'invalid-input': 'Revise os dados informados para o lançamento.',
@@ -27,6 +33,12 @@ const messages: Readonly<Record<TransactionErrorCode, string>> = {
   unauthenticated: 'Entre na sua conta para acessar os lançamentos.',
   unavailable: 'O serviço de lançamentos está indisponível no momento.',
   unknown: 'Não foi possível concluir a operação com lançamentos.',
+  'transaction-not-found': 'O lançamento não foi encontrado.',
+  'already-confirmed': 'O lançamento já está confirmado.',
+  'transaction-canceled': 'O lançamento está cancelado.',
+  'operation-not-allowed': 'Esta operação não é permitida para o lançamento.',
+  'reversal-exists': 'Este lançamento já possui um estorno.',
+  'refund-exists': 'Este lançamento já possui um reembolso.',
 }
 
 export class TransactionError extends Error {

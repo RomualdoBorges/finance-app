@@ -17,6 +17,8 @@ import {
   getTransactionStatusLabel,
 } from '../domain/transactionStatus'
 import { getTodayCivilDate } from '../../../lib/date'
+import { Button } from '../../../components/ui/Button'
+import { useTransactionMutations } from '../hooks/useTransactionMutations'
 
 export function TransactionsPage() {
   const listing = useTransactions()
@@ -24,6 +26,7 @@ export function TransactionsPage() {
   const categories = useCategories()
   const creation = useCreateTransaction()
   const [feedback, setFeedback] = useState<string | null>(null)
+  const lifecycle = useTransactionMutations()
   const loading = listing.loading || accounts.loading || categories.loading
   const error = listing.error ?? accounts.error ?? categories.error
   const accountNames = new Map(
@@ -96,7 +99,14 @@ export function TransactionsPage() {
                 className="rounded-lg border border-border bg-surface p-4"
                 key={item.id}
               >
-                <p className="font-medium">{item.description}</p>
+                <p className="font-medium">
+                  {item.operationKind === 'reversal'
+                    ? 'Estorno: '
+                    : item.operationKind === 'refund'
+                      ? 'Reembolso: '
+                      : ''}
+                  {item.description}
+                </p>
                 <p className="mt-1 text-sm">
                   Status:{' '}
                   <span className="rounded-full border border-border px-2 py-0.5 font-medium">
@@ -126,6 +136,123 @@ export function TransactionsPage() {
                   <p className="mt-2 text-sm text-muted-foreground">
                     {item.notes}
                   </p>
+                ) : null}
+                {item.operationKind === 'normal' &&
+                item.status !== 'canceled' ? (
+                  <div
+                    className="mt-3 flex flex-wrap gap-2"
+                    aria-label={`Ações de ${item.description}`}
+                  >
+                    {['planned', 'pending'].includes(item.status) ? (
+                      <Button
+                        disabled={lifecycle.pending}
+                        variant="secondary"
+                        onClick={() => {
+                          const description = window.prompt(
+                            'Descrição do lançamento:',
+                            item.description,
+                          )
+                          if (description)
+                            void lifecycle.update
+                              .mutateAsync({
+                                id: item.id,
+                                input: {
+                                  type: item.type,
+                                  description,
+                                  amountMinor: item.amountMinor,
+                                  accountId: item.accountId,
+                                  categoryId: item.categoryId,
+                                  notes: item.notes,
+                                  competenceDate: item.competenceDate!,
+                                  dueDate: item.dueDate!,
+                                  paymentDate: item.paymentDate!,
+                                },
+                              })
+                              .then(() => setFeedback('Lançamento editado.'))
+                        }}
+                      >
+                        Editar
+                      </Button>
+                    ) : null}
+                    {['planned', 'pending'].includes(item.status) ? (
+                      <Button
+                        disabled={lifecycle.pending}
+                        variant="secondary"
+                        onClick={() =>
+                          void lifecycle.confirm
+                            .mutateAsync(item.id)
+                            .then(() => setFeedback('Lançamento confirmado.'))
+                        }
+                      >
+                        Confirmar
+                      </Button>
+                    ) : null}
+                    <Button
+                      disabled={lifecycle.pending}
+                      variant="secondary"
+                      onClick={() => {
+                        const reason = window.prompt(
+                          'Informe o motivo do cancelamento:',
+                        )
+                        if (reason)
+                          void lifecycle.cancel
+                            .mutateAsync({ id: item.id, reason })
+                            .then(() => setFeedback('Lançamento cancelado.'))
+                      }}
+                    >
+                      Cancelar
+                    </Button>
+                    {item.status === 'confirmed' &&
+                    !item.reversedByTransactionId ? (
+                      <Button
+                        disabled={lifecycle.pending}
+                        variant="secondary"
+                        onClick={() => {
+                          const categoryId = window.prompt(
+                            'Informe o ID de uma categoria compatível para o estorno:',
+                          )
+                          if (categoryId)
+                            void lifecycle.reversal
+                              .mutateAsync({
+                                transaction: item,
+                                input: {
+                                  accountId: item.accountId,
+                                  categoryId,
+                                  notes: null,
+                                },
+                              })
+                              .then(() => setFeedback('Estorno criado.'))
+                        }}
+                      >
+                        Estornar
+                      </Button>
+                    ) : null}
+                    {item.status === 'confirmed' &&
+                    !item.refundedByTransactionId ? (
+                      <Button
+                        disabled={lifecycle.pending}
+                        variant="secondary"
+                        onClick={() => {
+                          const categoryId = window.prompt(
+                            'Informe o ID de uma categoria compatível para o reembolso:',
+                          )
+                          if (categoryId)
+                            void lifecycle.refund
+                              .mutateAsync({
+                                transaction: item,
+                                input: {
+                                  accountId: item.accountId,
+                                  categoryId,
+                                  notes: null,
+                                },
+                              })
+                              .then(() => setFeedback('Reembolso criado.'))
+                        }}
+                      >
+                        Reembolsar
+                      </Button>
+                    ) : null}
+                  </div>
                 ) : null}
               </li>
             ))}

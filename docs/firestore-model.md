@@ -210,6 +210,8 @@ Histórico mensal identificado por `referenceMonth`. O PDF define o caminho e a 
 O `groupId` está implícito no caminho das subcoleções; consultas `collectionGroup` podem exigir campo desnormalizado e índices adicionais. Índices efetivos são versionados em `firestore.indexes.json` e ajustados às consultas reais.
 ## Lançamentos básicos
 
+O ciclo de vida acrescenta `operationKind` e metadados anuláveis de confirmação, cancelamento e vínculos (`confirmedAt/By`, `canceledAt/By`, `cancellationReason`, `reversalOfTransactionId`, `refundOfTransactionId`, `reversedByTransactionId`, `refundedByTransactionId`). Novos documentos usam o contrato completo; legados recebem fallback apenas na leitura. Estorno e reembolso são documentos confirmados vinculados, criados atomicamente com a marcação do original, sem campos de saldo ou agregados.
+
 `financialGroups/{groupId}/transactions/{transactionId}` guarda receitas e despesas do grupo. O contrato inicial contém `groupId`, `type` (`income` ou `expense`), `description`, `normalizedDescription`, `amountMinor`, `accountId`, `categoryId`, `notes`, `createdBy`, `createdAt` e `updatedAt`. O valor é inteiro, positivo, em centavos BRL; o tipo determina entrada ou saída. Conta e categoria são referências por ID a documentos ativos do mesmo grupo e a categoria deve ter o mesmo tipo.
 
 Esta etapa não possui datas financeiras, status, edição, exclusão, transferências, saldos ou agregados. A listagem provisória lê no máximo os 50 documentos mais recentes por `createdAt` descendente.

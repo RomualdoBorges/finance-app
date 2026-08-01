@@ -161,3 +161,6 @@
 - `overdue` é somente uma projeção de `pending` com vencimento anterior à data
   civil atual e não é armazenado.
 - Nesta etapa não existem transições nem efeitos em saldos e agregados.
+# Ciclo de vida de lançamentos
+
+Somente lançamentos normais planejados ou pendentes são editáveis e confirmáveis. Cancelamento preserva confirmação anterior, exige motivo e é terminal. Um confirmado normal sem vínculo posterior pode ser cancelado. Estorno e reembolso total invertem o tipo, preservam valor e conta, exigem categoria ativa compatível, nascem confirmados e não admitem novas ações. Nesta etapa nenhuma operação altera saldos ou agregados.

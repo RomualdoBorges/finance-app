@@ -26,6 +26,10 @@ service cloud.firestore {
       return /databases/$(database)/documents/financialGroups/$(groupId)/accounts/$(accountId);
     }
 
+    function transactionPath(groupId, transactionId) {
+      return /databases/$(database)/documents/financialGroups/$(groupId)/transactions/$(transactionId);
+    }
+
     function isActiveOwnerMembership(membership) {
       return membership.data.userId == request.auth.uid
         && membership.data.role == 'owner'
@@ -385,6 +389,10 @@ service cloud.firestore {
           'groupId', 'type', 'description', 'normalizedDescription',
           'amountMinor', 'accountId', 'categoryId', 'notes',
           'status',
+          'operationKind', 'confirmedAt', 'confirmedBy',
+          'canceledAt', 'canceledBy', 'cancellationReason',
+          'reversalOfTransactionId', 'refundOfTransactionId',
+          'reversedByTransactionId', 'refundedByTransactionId',
           'competenceDate', 'dueDate', 'paymentDate',
           'createdBy', 'createdAt', 'updatedAt'
         ])
@@ -392,12 +400,26 @@ service cloud.firestore {
           'groupId', 'type', 'description', 'normalizedDescription',
           'amountMinor', 'accountId', 'categoryId', 'notes',
           'status',
+          'operationKind', 'confirmedAt', 'confirmedBy',
+          'canceledAt', 'canceledBy', 'cancellationReason',
+          'reversalOfTransactionId', 'refundOfTransactionId',
+          'reversedByTransactionId', 'refundedByTransactionId',
           'competenceDate', 'dueDate', 'paymentDate',
           'createdBy', 'createdAt', 'updatedAt'
         ])
         && request.resource.data.groupId == groupId
         && request.resource.data.type in ['income', 'expense']
-        && request.resource.data.status in ['planned', 'pending', 'confirmed']
+        && request.resource.data.status in ['planned', 'pending', 'confirmed', 'canceled']
+        && request.resource.data.operationKind in ['normal', 'reversal', 'refund']
+        && (request.resource.data.confirmedAt == null || request.resource.data.confirmedAt is timestamp)
+        && (request.resource.data.confirmedBy == null || request.resource.data.confirmedBy is string)
+        && (request.resource.data.canceledAt == null || request.resource.data.canceledAt is timestamp)
+        && (request.resource.data.canceledBy == null || request.resource.data.canceledBy is string)
+        && (request.resource.data.cancellationReason == null || (request.resource.data.cancellationReason is string && request.resource.data.cancellationReason.size() >= 2 && request.resource.data.cancellationReason.size() <= 500))
+        && (request.resource.data.reversalOfTransactionId == null || request.resource.data.reversalOfTransactionId is string)
+        && (request.resource.data.refundOfTransactionId == null || request.resource.data.refundOfTransactionId is string)
+        && (request.resource.data.reversedByTransactionId == null || request.resource.data.reversedByTransactionId is string)
+        && (request.resource.data.refundedByTransactionId == null || request.resource.data.refundedByTransactionId is string)
         && request.resource.data.description is string
         && request.resource.data.description.size() >= 2
         && request.resource.data.description.size() <= 120
@@ -420,9 +442,87 @@ service cloud.firestore {
         && request.resource.data.dueDate.matches('^[0-9]{4}-(0[1-9]|1[0-2])-([0-2][0-9]|3[0-1])$')
         && request.resource.data.paymentDate is string
         && request.resource.data.paymentDate.matches('^[0-9]{4}-(0[1-9]|1[0-2])-([0-2][0-9]|3[0-1])$')
+        && request.resource.data.createdBy is string
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.updatedAt is timestamp;
+    }
+
+    function isNormalTransactionCreate() {
+      return request.resource.data.operationKind == 'normal'
         && request.resource.data.createdBy == request.auth.uid
         && request.resource.data.createdAt == request.time
-        && request.resource.data.updatedAt == request.time;
+        && request.resource.data.updatedAt == request.time
+        && request.resource.data.status in ['planned', 'pending', 'confirmed']
+        && request.resource.data.confirmedAt == (request.resource.data.status == 'confirmed' ? request.time : null)
+        && request.resource.data.confirmedBy == (request.resource.data.status == 'confirmed' ? request.auth.uid : null)
+        && request.resource.data.canceledAt == null && request.resource.data.canceledBy == null
+        && request.resource.data.cancellationReason == null
+        && request.resource.data.reversalOfTransactionId == null
+        && request.resource.data.refundOfTransactionId == null
+        && request.resource.data.reversedByTransactionId == null
+        && request.resource.data.refundedByTransactionId == null;
+    }
+
+    function isOppositeTransactionCreate(groupId, transactionId) {
+      let originalId = request.resource.data.operationKind == 'reversal'
+        ? request.resource.data.reversalOfTransactionId
+        : request.resource.data.refundOfTransactionId;
+      let original = get(transactionPath(groupId, originalId));
+      return request.resource.data.operationKind in ['reversal', 'refund']
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time
+        && originalId is string && original.data.groupId == groupId
+        && original.data.status == 'confirmed'
+        && (!original.data.keys().hasAny(['operationKind']) || original.data.operationKind == 'normal')
+        && request.resource.data.status == 'confirmed'
+        && request.resource.data.type != original.data.type
+        && request.resource.data.amountMinor == original.data.amountMinor
+        && request.resource.data.accountId == original.data.accountId
+        && request.resource.data.confirmedAt == request.time
+        && request.resource.data.confirmedBy == request.auth.uid
+        && request.resource.data.canceledAt == null && request.resource.data.canceledBy == null
+        && request.resource.data.cancellationReason == null
+        && request.resource.data.reversedByTransactionId == null
+        && request.resource.data.refundedByTransactionId == null
+        && getAfter(transactionPath(groupId, originalId)).data[request.resource.data.operationKind == 'reversal' ? 'reversedByTransactionId' : 'refundedByTransactionId'] == transactionId;
+    }
+
+    function isValidTransactionUpdate(groupId, transactionId) {
+      let affected = request.resource.data.diff(resource.data).affectedKeys();
+      let normal = (!resource.data.keys().hasAny(['operationKind']) || resource.data.operationKind == 'normal');
+      let edit = resource.data.status in ['planned', 'pending']
+        && request.resource.data.status == resource.data.status
+        && affected.hasOnly(['type', 'description', 'normalizedDescription', 'amountMinor', 'accountId', 'categoryId', 'notes', 'competenceDate', 'dueDate', 'paymentDate', 'updatedAt']);
+      let confirm = resource.data.status in ['planned', 'pending']
+        && request.resource.data.status == 'confirmed'
+        && request.resource.data.confirmedAt == request.time
+        && request.resource.data.confirmedBy == request.auth.uid
+        && affected.hasOnly(['status', 'confirmedAt', 'confirmedBy', 'updatedAt']);
+      let cancel = resource.data.status in ['planned', 'pending', 'confirmed']
+        && request.resource.data.status == 'canceled'
+        && request.resource.data.canceledAt == request.time
+        && request.resource.data.canceledBy == request.auth.uid
+        && request.resource.data.cancellationReason is string
+        && affected.hasOnly(['status', 'canceledAt', 'canceledBy', 'cancellationReason', 'updatedAt']);
+      let marker = resource.data.status == 'confirmed'
+        && affected.hasOnly(['reversedByTransactionId', 'refundedByTransactionId', 'updatedAt'])
+        && ((resource.data.reversedByTransactionId == null
+            && request.resource.data.reversedByTransactionId is string
+            && request.resource.data.refundedByTransactionId == resource.data.refundedByTransactionId
+            && getAfter(transactionPath(groupId, request.resource.data.reversedByTransactionId)).data.operationKind == 'reversal'
+            && getAfter(transactionPath(groupId, request.resource.data.reversedByTransactionId)).data.reversalOfTransactionId == transactionId)
+          || (resource.data.refundedByTransactionId == null
+            && request.resource.data.refundedByTransactionId is string
+            && request.resource.data.reversedByTransactionId == resource.data.reversedByTransactionId
+            && getAfter(transactionPath(groupId, request.resource.data.refundedByTransactionId)).data.operationKind == 'refund'
+            && getAfter(transactionPath(groupId, request.resource.data.refundedByTransactionId)).data.refundOfTransactionId == transactionId));
+      return normal && hasValidTransactionShape(groupId)
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.createdBy == resource.data.createdBy
+        && request.resource.data.updatedAt == request.time
+        && (!edit || hasValidTransactionReferences(groupId))
+        && (edit || confirm || cancel || marker);
     }
 
     function hasValidTransactionReferences(groupId) {
@@ -520,8 +620,10 @@ service cloud.firestore {
         allow create: if isActiveMember(groupId)
           && transactionId.size() > 0
           && hasValidTransactionShape(groupId)
-          && hasValidTransactionReferences(groupId);
-        allow update, delete: if false;
+          && hasValidTransactionReferences(groupId)
+          && (isNormalTransactionCreate() || isOppositeTransactionCreate(groupId, transactionId));
+        allow update: if isActiveMember(groupId) && isValidTransactionUpdate(groupId, transactionId);
+        allow delete: if false;
       }
     }
 

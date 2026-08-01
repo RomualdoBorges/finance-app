@@ -8,15 +8,19 @@ import {
   query,
   serverTimestamp,
   setDoc,
+  runTransaction,
   type DocumentData,
   type DocumentReference,
   type Firestore,
   type Query,
 } from 'firebase/firestore'
 import {
+  TRANSACTION_OPERATION_KINDS,
+  type OppositeTransactionInput,
   type PersistTransactionInput,
   type Transaction,
   type TransactionType,
+  type UpdateTransactionInput,
 } from '../domain/Transaction'
 import {
   DEFAULT_TRANSACTION_STATUS,
@@ -101,6 +105,18 @@ export function mapTransactionSnapshot(
   const data = snapshot.data as Readonly<Record<string, unknown>>
   const createdAt = date(data['createdAt'])
   const updatedAt = date(data['updatedAt'])
+  const optionalDate = (field: string): Date | null => {
+    if (!(field in data) || data[field] === null) return null
+    const result = date(data[field])
+    if (result === null) throw new TransactionError('invalid-data')
+    return result
+  }
+  const optionalString = (field: string): string | null => {
+    if (!(field in data) || data[field] === null) return null
+    if (typeof data[field] !== 'string')
+      throw new TransactionError('invalid-data')
+    return data[field]
+  }
   const parsed = createTransactionSchema
     .omit({
       competenceDate: true,
@@ -128,6 +144,13 @@ export function mapTransactionSnapshot(
       ? DEFAULT_TRANSACTION_STATUS
       : PERSISTED_TRANSACTION_STATUSES.find((item) => item === rawStatus)
   if (status === undefined) throw new TransactionError('invalid-data')
+  const operationKind =
+    data['operationKind'] === undefined
+      ? 'normal'
+      : TRANSACTION_OPERATION_KINDS.find(
+          (item) => item === data['operationKind'],
+        )
+  if (operationKind === undefined) throw new TransactionError('invalid-data')
   if (
     snapshot.id.length === 0 ||
     data['groupId'] !== groupId ||
@@ -151,6 +174,16 @@ export function mapTransactionSnapshot(
     paymentDate: legacyDate('paymentDate'),
     createdAt,
     updatedAt,
+    operationKind,
+    confirmedAt: optionalDate('confirmedAt'),
+    confirmedBy: optionalString('confirmedBy'),
+    canceledAt: optionalDate('canceledAt'),
+    canceledBy: optionalString('canceledBy'),
+    cancellationReason: optionalString('cancellationReason'),
+    reversalOfTransactionId: optionalString('reversalOfTransactionId'),
+    refundOfTransactionId: optionalString('refundOfTransactionId'),
+    reversedByTransactionId: optionalString('reversedByTransactionId'),
+    refundedByTransactionId: optionalString('refundedByTransactionId'),
   }
 }
 function identifier(value: string): void {
@@ -205,6 +238,7 @@ export class FirestoreTransactionRepository implements TransactionRepository {
       const timestamp = this.ops.serverTimestamp()
       await this.ops.set(generated.reference, {
         ...input,
+        confirmedAt: input.status === 'confirmed' ? timestamp : null,
         createdAt: timestamp,
         updatedAt: timestamp,
       })
@@ -217,5 +251,203 @@ export class FirestoreTransactionRepository implements TransactionRepository {
     } catch (error) {
       throw mapError(error)
     }
+  }
+  private reference(groupId: string, transactionId: string) {
+    return doc(
+      this.firestore,
+      'financialGroups',
+      groupId,
+      'transactions',
+      transactionId,
+    )
+  }
+  async update(
+    groupId: string,
+    transactionId: string,
+    input: UpdateTransactionInput,
+  ): Promise<Transaction> {
+    return this.mutate(groupId, transactionId, (current, transaction) => {
+      if (
+        current.operationKind !== 'normal' ||
+        !['planned', 'pending'].includes(current.status)
+      )
+        throw new TransactionError('operation-not-allowed')
+      transaction.update(this.reference(groupId, transactionId), {
+        ...input,
+        normalizedDescription: input.description
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .toLocaleLowerCase('pt-BR')
+          .trim(),
+        updatedAt: serverTimestamp(),
+      })
+    })
+  }
+  async confirm(
+    groupId: string,
+    transactionId: string,
+    userId: string,
+  ): Promise<Transaction> {
+    return this.mutate(groupId, transactionId, (current, transaction) => {
+      if (current.operationKind !== 'normal')
+        throw new TransactionError('operation-not-allowed')
+      if (current.status === 'confirmed') return
+      if (current.status === 'canceled')
+        throw new TransactionError('transaction-canceled')
+      transaction.update(this.reference(groupId, transactionId), {
+        status: 'confirmed',
+        confirmedAt: serverTimestamp(),
+        confirmedBy: userId,
+        updatedAt: serverTimestamp(),
+      })
+    })
+  }
+  async cancel(
+    groupId: string,
+    transactionId: string,
+    userId: string,
+    reason: string,
+  ): Promise<Transaction> {
+    return this.mutate(groupId, transactionId, (current, transaction) => {
+      if (current.operationKind !== 'normal')
+        throw new TransactionError('operation-not-allowed')
+      if (current.status === 'canceled') return
+      if (current.reversedByTransactionId || current.refundedByTransactionId)
+        throw new TransactionError('operation-not-allowed')
+      transaction.update(this.reference(groupId, transactionId), {
+        status: 'canceled',
+        canceledAt: serverTimestamp(),
+        canceledBy: userId,
+        cancellationReason: reason,
+        updatedAt: serverTimestamp(),
+      })
+    })
+  }
+  createReversal(
+    groupId: string,
+    transactionId: string,
+    userId: string,
+    input: OppositeTransactionInput,
+  ) {
+    return this.createOpposite(
+      'reversal',
+      groupId,
+      transactionId,
+      userId,
+      input,
+    )
+  }
+  createRefund(
+    groupId: string,
+    transactionId: string,
+    userId: string,
+    input: OppositeTransactionInput,
+  ) {
+    return this.createOpposite('refund', groupId, transactionId, userId, input)
+  }
+  private async mutate(
+    groupId: string,
+    transactionId: string,
+    action: (
+      current: Transaction,
+      transaction: Parameters<Parameters<typeof runTransaction>[1]>[0],
+    ) => void,
+  ): Promise<Transaction> {
+    identifier(groupId)
+    identifier(transactionId)
+    try {
+      await runTransaction(this.firestore, async (transaction) => {
+        const reference = this.reference(groupId, transactionId)
+        const snapshot = await transaction.get(reference)
+        const current = mapTransactionSnapshot(groupId, {
+          id: transactionId,
+          exists: snapshot.exists(),
+          data: snapshot.data(),
+        })
+        if (current === null)
+          throw new TransactionError('transaction-not-found')
+        action(current, transaction)
+      })
+      const snapshot = await getDoc(this.reference(groupId, transactionId))
+      const result = mapTransactionSnapshot(groupId, {
+        id: transactionId,
+        exists: snapshot.exists(),
+        data: snapshot.data(),
+      })
+      if (result === null) throw new TransactionError('transaction-not-found')
+      return result
+    } catch (error) {
+      throw mapError(error)
+    }
+  }
+  private async createOpposite(
+    kind: 'reversal' | 'refund',
+    groupId: string,
+    transactionId: string,
+    userId: string,
+    input: OppositeTransactionInput,
+  ): Promise<Transaction> {
+    const generated = this.ops.newReference(this.firestore, groupId)
+    await runTransaction(this.firestore, async (transaction) => {
+      const originalRef = this.reference(groupId, transactionId)
+      const snap = await transaction.get(originalRef)
+      const original = mapTransactionSnapshot(groupId, {
+        id: transactionId,
+        exists: snap.exists(),
+        data: snap.data(),
+      })
+      if (original === null) throw new TransactionError('transaction-not-found')
+      if (
+        original.operationKind !== 'normal' ||
+        original.status !== 'confirmed'
+      )
+        throw new TransactionError('operation-not-allowed')
+      const marker =
+        kind === 'reversal'
+          ? 'reversedByTransactionId'
+          : 'refundedByTransactionId'
+      if (original[marker])
+        throw new TransactionError(
+          kind === 'reversal' ? 'reversal-exists' : 'refund-exists',
+        )
+      const timestamp = serverTimestamp()
+      transaction.set(generated.reference as DocumentReference<DocumentData>, {
+        groupId,
+        type: original.type === 'income' ? 'expense' : 'income',
+        description: `${kind === 'reversal' ? 'Estorno' : 'Reembolso'} de ${original.description}`,
+        normalizedDescription: `${kind === 'reversal' ? 'estorno' : 'reembolso'} de ${original.normalizedDescription}`,
+        amountMinor: original.amountMinor,
+        accountId: input.accountId,
+        categoryId: input.categoryId,
+        notes: input.notes,
+        competenceDate: original.competenceDate,
+        dueDate: original.dueDate,
+        paymentDate: original.paymentDate,
+        status: 'confirmed',
+        operationKind: kind,
+        confirmedAt: timestamp,
+        confirmedBy: userId,
+        canceledAt: null,
+        canceledBy: null,
+        cancellationReason: null,
+        reversalOfTransactionId: kind === 'reversal' ? transactionId : null,
+        refundOfTransactionId: kind === 'refund' ? transactionId : null,
+        reversedByTransactionId: null,
+        refundedByTransactionId: null,
+        createdBy: userId,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      })
+      transaction.update(originalRef, {
+        [marker]: generated.id,
+        updatedAt: timestamp,
+      })
+    })
+    const result = mapTransactionSnapshot(
+      groupId,
+      await this.ops.get(generated.reference),
+    )
+    if (result === null) throw new TransactionError('invalid-data')
+    return result
   }
 }

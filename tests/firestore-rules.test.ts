@@ -141,6 +141,7 @@ function transactionData(
   userId: string,
   overrides: Readonly<Record<string, unknown>> = {},
 ) {
+  const status = overrides['status'] ?? 'pending'
   return {
     groupId,
     type: 'expense',
@@ -150,7 +151,17 @@ function transactionData(
     accountId: 'account-1',
     categoryId: 'category-1',
     notes: null,
-    status: 'pending',
+    status,
+    operationKind: 'normal',
+    confirmedAt: status === 'confirmed' ? serverTimestamp() : null,
+    confirmedBy: status === 'confirmed' ? userId : null,
+    canceledAt: null,
+    canceledBy: null,
+    cancellationReason: null,
+    reversalOfTransactionId: null,
+    refundOfTransactionId: null,
+    reversedByTransactionId: null,
+    refundedByTransactionId: null,
     competenceDate: '2026-07-31',
     dueDate: '2026-08-05',
     paymentDate: '2026-08-05',
@@ -1098,14 +1109,14 @@ describe('Firestore Rules de lançamentos', () => {
     )
   })
 
-  it('bloqueia update e delete', async () => {
+  it('permite edição controlada e bloqueia delete', async () => {
     await seedReferences()
     const owner = environment.authenticatedContext('user-1').firestore()
     const reference = transactionRef(owner, 'group-a', 'expense-1')
     await assertSucceeds(
       setDoc(reference, transactionData('group-a', 'user-1')),
     )
-    await assertFails(
+    await assertSucceeds(
       updateDoc(reference, {
         description: 'Alterada',
         updatedAt: serverTimestamp(),

@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unnecessary-type-assertion, @typescript-eslint/unbound-method, @typescript-eslint/require-await, @typescript-eslint/no-unsafe-return */
+/* eslint-disable @typescript-eslint/unbound-method, @typescript-eslint/require-await, @typescript-eslint/no-unsafe-return */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { AccountRepository } from '../../account/repositories/AccountRepository'
 import type { CategoryRepository } from '../../category/repositories/CategoryRepository'
@@ -61,7 +61,7 @@ describe('TransactionService', () => {
   const accounts = { listByGroup: vi.fn() } as unknown as AccountRepository
   const categories = { getById: vi.fn() } as unknown as CategoryRepository
   const service = new TransactionService(
-    repository as TransactionRepository,
+    repository as unknown as TransactionRepository,
     accounts,
     categories,
   )
@@ -95,6 +95,16 @@ describe('TransactionService', () => {
       competenceDate: '2026-07-31',
       dueDate: '2026-08-05',
       paymentDate: '2026-08-05',
+      operationKind: 'normal',
+      confirmedAt: null,
+      confirmedBy: null,
+      canceledAt: null,
+      canceledBy: null,
+      cancellationReason: null,
+      reversalOfTransactionId: null,
+      refundOfTransactionId: null,
+      reversedByTransactionId: null,
+      refundedByTransactionId: null,
     })
     expect(accounts.listByGroup).toHaveBeenCalledTimes(1)
   })

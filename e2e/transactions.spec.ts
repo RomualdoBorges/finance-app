@@ -30,7 +30,7 @@ test('cadastra receita e despesa sem alterar saldo da conta', async ({
   await page.getByLabel('Descrição').fill('Despesa E2E')
   await page.getByLabel('Valor').fill('150,50')
   await page.getByLabel('Competência').fill('2026-07-30')
-  await page.getByLabel('Vencimento').fill('2026-07-29')
+  await page.getByLabel('Vencimento').fill('2026-08-04')
   await page.getByLabel('Pagamento').fill('2026-07-28')
   await page.locator('select[name="accountId"]').selectOption({ index: 1 })
   await page.locator('select[name="categoryId"]').selectOption({ index: 1 })
@@ -41,7 +41,13 @@ test('cadastra receita e despesa sem alterar saldo da conta', async ({
   await expect(page.getByText('Despesa E2E')).toBeVisible()
   await expect(page.getByText('Competência: 31/07/2026')).toBeVisible()
   await expect(page.getByText('Competência: 30/07/2026')).toBeVisible()
-  await expect(page.getByText(/Vencimento:|Pagamento:|Status:/)).toHaveCount(0)
+  const incomeCard = page.locator('li').filter({ hasText: 'Receita E2E' })
+  const expenseCard = page.locator('li').filter({ hasText: 'Despesa E2E' })
+  for (const card of [incomeCard, expenseCard]) {
+    await expect(card.getByText('Pendente', { exact: true })).toBeVisible()
+    await expect(card.getByText('Vencimento:', { exact: false })).toHaveCount(0)
+    await expect(card.getByText('Pagamento:', { exact: false })).toHaveCount(0)
+  }
   await page.getByRole('link', { name: 'Contas' }).click()
   await expect(page.getByText(balanceBefore ?? '')).toBeVisible()
 })

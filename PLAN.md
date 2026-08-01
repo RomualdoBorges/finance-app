@@ -69,7 +69,7 @@ Nenhum item está concluído por existir no template. Checkboxes só são marcad
 - [x] Receitas e despesas
 - [x] Datas de competência, pagamento e vencimento
 - [x] Estados planejado, pendente, confirmado, vencido e cancelado
-- [ ] Edição, confirmação, cancelamento, estorno e reembolso aplicáveis
+- [x] Edição, confirmação, cancelamento, estorno e reembolso aplicáveis
 - [ ] Atualização consistente de saldos e agregados
 - [ ] Extrato com filtros, ordenação, limites e paginação `startAfter`
 - [ ] Detalhes e estados loading/erro/vazio

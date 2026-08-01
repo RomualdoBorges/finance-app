@@ -166,6 +166,8 @@ Cobertura mínima:
 Os testes usam Authentication, Firestore, Functions e Storage Emulators e não acessam dados de produção.
 ## Lançamentos básicos e datas financeiras
 
+Updates agora são liberados somente por diffs correspondentes a edição, confirmação, cancelamento ou marcação atômica do vínculo. Criações `reversal`/`refund` validam o original confirmado, tipo invertido, valor e conta preservados, categoria compatível, identidade e timestamps do ator e `getAfter()` da marcação. Updates posteriores dos lançamentos opostos e deletes permanecem bloqueados; campos de saldo e agregados não pertencem ao contrato.
+
 Membros ativos podem ler `financialGroups/{groupId}/transactions`. A criação exige o conjunto exato de campos do contrato, `createdBy` autenticado, timestamps do servidor, tipo `income`/`expense`, valor inteiro positivo dentro do limite e conta/categoria ativas do mesmo grupo; a categoria deve ter tipo compatível.
 
 `competenceDate`, `dueDate` e `paymentDate` são obrigatórias em novas criações e aceitam somente strings com estrutura `YYYY-MM-DD`; `Timestamp`, `null` e outros formatos são bloqueados. A existência real do dia no calendário é validada no domínio, pois as Rules fazem somente a validação estrutural adequada a esse ambiente. Documentos legados sem as propriedades continuam legíveis, sem migração. As datas não autorizam transições de estado nem efeitos financeiros.

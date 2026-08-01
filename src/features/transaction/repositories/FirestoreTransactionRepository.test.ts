@@ -24,6 +24,16 @@ const input = {
   dueDate: '2026-08-05',
   paymentDate: '2026-08-05',
   createdBy: 'user-1',
+  operationKind: 'normal' as const,
+  confirmedAt: null,
+  confirmedBy: null,
+  canceledAt: null,
+  canceledBy: null,
+  cancellationReason: null,
+  reversalOfTransactionId: null,
+  refundOfTransactionId: null,
+  reversedByTransactionId: null,
+  refundedByTransactionId: null,
 }
 const snapshot = {
   id: 'transaction-1',
