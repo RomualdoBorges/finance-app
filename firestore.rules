@@ -1,0 +1,634 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isSelf(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function groupPath(groupId) {
+      return /databases/$(database)/documents/financialGroups/$(groupId);
+    }
+
+    function membershipPath(groupId, userId) {
+      return /databases/$(database)/documents/financialGroups/$(groupId)/members/$(userId);
+    }
+
+    function categoryPath(groupId, categoryId) {
+      return /databases/$(database)/documents/financialGroups/$(groupId)/categories/$(categoryId);
+    }
+
+    function accountPath(groupId, accountId) {
+      return /databases/$(database)/documents/financialGroups/$(groupId)/accounts/$(accountId);
+    }
+
+    function transactionPath(groupId, transactionId) {
+      return /databases/$(database)/documents/financialGroups/$(groupId)/transactions/$(transactionId);
+    }
+
+    function isActiveOwnerMembership(membership) {
+      return membership.data.userId == request.auth.uid
+        && membership.data.role == 'owner'
+        && membership.data.status == 'active';
+    }
+
+    function isActiveMember(groupId) {
+      return isAuthenticated()
+        && exists(membershipPath(groupId, request.auth.uid))
+        && isActiveOwnerMembership(
+          get(membershipPath(groupId, request.auth.uid))
+        );
+    }
+
+    function hasOnlyUserProfileFields() {
+      return request.resource.data.keys().hasOnly([
+        'email',
+        'displayName',
+        'photoURL',
+        'activeGroupId',
+        'createdAt',
+        'updatedAt'
+      ]);
+    }
+
+    function hasAllUserProfileFields() {
+      return request.resource.data.keys().hasAll([
+        'email',
+        'displayName',
+        'photoURL',
+        'createdAt',
+        'updatedAt'
+      ]);
+    }
+
+    function hasValidNullableStrings() {
+      return (request.resource.data.email == null
+          || request.resource.data.email is string)
+        && (request.resource.data.displayName == null
+          || request.resource.data.displayName is string)
+        && (request.resource.data.photoURL == null
+          || request.resource.data.photoURL is string);
+    }
+
+    function hasValidUserProfileShape() {
+      return hasOnlyUserProfileFields()
+        && hasAllUserProfileFields()
+        && hasValidNullableStrings()
+        && (!request.resource.data.keys().hasAny(['activeGroupId'])
+          || (request.resource.data.activeGroupId is string
+            && request.resource.data.activeGroupId.size() > 0))
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.updatedAt is timestamp;
+    }
+
+    function hasValidActiveGroup() {
+      return !request.resource.data.keys().hasAny(['activeGroupId'])
+        || (
+          exists(groupPath(request.resource.data.activeGroupId))
+          && exists(
+            membershipPath(
+              request.resource.data.activeGroupId,
+              request.auth.uid
+            )
+          )
+          && isActiveOwnerMembership(
+            get(
+              membershipPath(
+                request.resource.data.activeGroupId,
+                request.auth.uid
+              )
+            )
+          )
+        );
+    }
+
+    function preservesActiveGroupId() {
+      return !request.resource.data.diff(resource.data).affectedKeys()
+        .hasAny(['activeGroupId']);
+    }
+
+    function hasValidActiveGroupUpdate() {
+      return preservesActiveGroupId()
+        || (
+          request.resource.data.keys().hasAny(['activeGroupId'])
+          && hasValidActiveGroup()
+        );
+    }
+
+    function hasValidGroupShape(groupId) {
+      return request.resource.data.keys().hasOnly([
+          'name',
+          'type',
+          'currency',
+          'ownerId',
+          'status',
+          'createdAt',
+          'updatedAt'
+        ])
+        && request.resource.data.keys().hasAll([
+          'name',
+          'type',
+          'currency',
+          'ownerId',
+          'status',
+          'createdAt',
+          'updatedAt'
+        ])
+        && groupId.size() > 0
+        && request.resource.data.name == 'Meu Financeiro'
+        && request.resource.data.type == 'personal'
+        && request.resource.data.currency == 'BRL'
+        && request.resource.data.ownerId == request.auth.uid
+        && request.resource.data.status == 'active'
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time;
+    }
+
+    function hasValidOwnerMembershipShape(groupId, userId) {
+      return request.resource.data.keys().hasOnly([
+          'userId',
+          'groupId',
+          'role',
+          'status',
+          'createdAt',
+          'updatedAt'
+        ])
+        && request.resource.data.keys().hasAll([
+          'userId',
+          'groupId',
+          'role',
+          'status',
+          'createdAt',
+          'updatedAt'
+        ])
+        && isSelf(userId)
+        && request.resource.data.userId == userId
+        && request.resource.data.groupId == groupId
+        && request.resource.data.role == 'owner'
+        && request.resource.data.status == 'active'
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time;
+    }
+
+    function hasValidCategoryShape(groupId) {
+      return request.resource.data.keys().hasOnly([
+          'groupId',
+          'name',
+          'normalizedName',
+          'type',
+          'origin',
+          'status',
+          'parentCategoryId',
+          'icon',
+          'usageCount',
+          'createdBy',
+          'createdAt',
+          'updatedAt'
+        ])
+        && request.resource.data.keys().hasAll([
+          'groupId',
+          'name',
+          'normalizedName',
+          'type',
+          'origin',
+          'status',
+          'parentCategoryId',
+          'icon',
+          'createdBy',
+          'createdAt',
+          'updatedAt'
+        ])
+        && request.resource.data.groupId == groupId
+        && request.resource.data.name is string
+        && request.resource.data.name.size() >= 2
+        && request.resource.data.name.size() <= 60
+        && request.resource.data.normalizedName is string
+        && request.resource.data.normalizedName.size() >= 2
+        && request.resource.data.normalizedName.size() <= 60
+        && request.resource.data.type in ['income', 'expense']
+        && request.resource.data.origin in ['default', 'custom']
+        && request.resource.data.status in ['active', 'archived']
+        && (request.resource.data.parentCategoryId == null
+          || request.resource.data.parentCategoryId is string)
+        && (request.resource.data.icon == null
+          || (request.resource.data.icon is string
+            && request.resource.data.icon.size() <= 40))
+        && (!request.resource.data.keys().hasAny(['usageCount'])
+          || (request.resource.data.usageCount is int
+            && request.resource.data.usageCount >= 0))
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.updatedAt is timestamp;
+    }
+
+    function isValidCategoryCreate(groupId) {
+      return hasValidCategoryShape(groupId)
+        && request.resource.data.status == 'active'
+        && request.resource.data.keys().hasAny(['usageCount'])
+        && request.resource.data.usageCount == 0
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time
+        && hasValidCategoryParent(groupId);
+    }
+
+    function preservesProtectedCategoryFields() {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+        'groupId',
+        'origin',
+        'createdBy',
+        'createdAt',
+        'usageCount'
+      ]);
+    }
+
+    function hasValidCategoryUpdate(groupId) {
+      let affected = request.resource.data.diff(resource.data).affectedKeys();
+      return hasValidCategoryShape(groupId)
+        && preservesProtectedCategoryFields()
+        && request.resource.data.updatedAt == request.time
+        && (
+          request.resource.data.status == 'archived'
+          || hasValidCategoryParent(groupId)
+        )
+        && (
+          resource.data.origin == 'custom'
+          || !affected.hasAny(['type', 'parentCategoryId'])
+        );
+    }
+
+    function canDeleteCategory() {
+      return resource.data.origin == 'custom'
+        && resource.data.parentCategoryId != null
+        && (!resource.data.keys().hasAny(['usageCount'])
+          || resource.data.usageCount == 0);
+    }
+
+    function hasValidCategoryParent(groupId) {
+      let parentId = request.resource.data.parentCategoryId;
+      return parentId == null
+        || (
+          parentId.size() > 0
+          && existsAfter(categoryPath(groupId, parentId))
+          && getAfter(categoryPath(groupId, parentId)).data.groupId == groupId
+          && getAfter(categoryPath(groupId, parentId)).data.status == 'active'
+          && getAfter(categoryPath(groupId, parentId)).data.parentCategoryId == null
+          && getAfter(categoryPath(groupId, parentId)).data.type == request.resource.data.type
+        );
+    }
+
+    function hasValidAccountShape(groupId) {
+      return request.resource.data.keys().hasOnly([
+          'groupId', 'name', 'normalizedName', 'description',
+          'institutionName', 'icon', 'color', 'status', 'isArchived',
+          'accountType', 'includeInBalance', 'includeInNetWorth',
+          'initialBalanceMinor', 'initialBalanceDate',
+          'currentBalanceMinor', 'projectedBalanceMinor', 'balancesUpdatedAt',
+          'createdBy', 'createdAt', 'updatedAt'
+        ])
+        && request.resource.data.keys().hasAll([
+          'groupId', 'name', 'normalizedName', 'description',
+          'institutionName', 'icon', 'color', 'status', 'isArchived',
+          'accountType', 'includeInBalance', 'includeInNetWorth',
+          'initialBalanceMinor', 'initialBalanceDate',
+          'createdBy', 'createdAt', 'updatedAt'
+        ])
+        && request.resource.data.groupId == groupId
+        && request.resource.data.name is string
+        && request.resource.data.name.size() >= 2
+        && request.resource.data.name.size() <= 60
+        && request.resource.data.normalizedName is string
+        && request.resource.data.normalizedName.size() >= 2
+        && request.resource.data.normalizedName.size() <= 60
+        && (request.resource.data.description == null
+          || (request.resource.data.description is string
+            && request.resource.data.description.size() <= 200))
+        && (request.resource.data.institutionName == null
+          || (request.resource.data.institutionName is string
+            && request.resource.data.institutionName.size() <= 80))
+        && (request.resource.data.icon == null
+          || (request.resource.data.icon is string
+            && request.resource.data.icon.size() <= 40))
+        && (request.resource.data.color == null
+          || (request.resource.data.color is string
+            && request.resource.data.color.matches('^#[0-9A-Fa-f]{6}$')))
+        && request.resource.data.accountType in [
+          'checking', 'savings', 'cash', 'credit_card', 'investment',
+          'digital_wallet', 'other'
+        ]
+        && request.resource.data.includeInBalance is bool
+        && request.resource.data.includeInNetWorth is bool
+        && request.resource.data.initialBalanceMinor is int
+        && request.resource.data.initialBalanceMinor >= -9000000000000
+        && request.resource.data.initialBalanceMinor <= 9000000000000
+        && request.resource.data.initialBalanceDate is string
+        && request.resource.data.initialBalanceDate.matches('^[0-9]{4}-(0[1-9]|1[0-2])-([0-2][0-9]|3[0-1])$')
+        && (
+          !request.resource.data.keys().hasAny([
+            'currentBalanceMinor', 'projectedBalanceMinor', 'balancesUpdatedAt'
+          ])
+          || (
+            request.resource.data.keys().hasAll([
+              'currentBalanceMinor', 'projectedBalanceMinor', 'balancesUpdatedAt'
+            ])
+            && request.resource.data.currentBalanceMinor is int
+            && request.resource.data.currentBalanceMinor >= -9000000000000
+            && request.resource.data.currentBalanceMinor <= 9000000000000
+            && request.resource.data.projectedBalanceMinor is int
+            && request.resource.data.projectedBalanceMinor >= -9000000000000
+            && request.resource.data.projectedBalanceMinor <= 9000000000000
+            && request.resource.data.balancesUpdatedAt is timestamp
+          )
+        )
+        && request.resource.data.status in ['active', 'archived']
+        && request.resource.data.isArchived is bool
+        && (
+          (request.resource.data.status == 'active'
+            && request.resource.data.isArchived == false)
+          || (request.resource.data.status == 'archived'
+            && request.resource.data.isArchived == true)
+        )
+        && request.resource.data.createdBy is string
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.updatedAt is timestamp;
+    }
+
+    function isValidAccountCreate(groupId) {
+      return hasValidAccountShape(groupId)
+        && !request.resource.data.keys().hasAny([
+          'currentBalanceMinor', 'projectedBalanceMinor', 'balancesUpdatedAt'
+        ])
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.status == 'active'
+        && request.resource.data.isArchived == false
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time;
+    }
+
+    function isValidAccountUpdate(groupId) {
+      let affected = request.resource.data.diff(resource.data).affectedKeys();
+      return hasValidAccountShape(groupId)
+        && !affected.hasAny([
+          'groupId', 'createdBy', 'createdAt',
+          'currentBalanceMinor', 'projectedBalanceMinor', 'balancesUpdatedAt'
+        ])
+        && affected.hasOnly([
+          'name', 'normalizedName', 'description', 'institutionName',
+          'icon', 'color', 'accountType', 'includeInBalance',
+          'includeInNetWorth', 'initialBalanceMinor', 'initialBalanceDate',
+          'status', 'isArchived', 'updatedAt'
+        ])
+        && request.resource.data.updatedAt == request.time;
+    }
+
+    function hasValidTransactionShape(groupId) {
+      return request.resource.data.keys().hasOnly([
+          'groupId', 'type', 'description', 'normalizedDescription',
+          'amountMinor', 'accountId', 'categoryId', 'notes',
+          'status',
+          'operationKind', 'confirmedAt', 'confirmedBy',
+          'canceledAt', 'canceledBy', 'cancellationReason',
+          'reversalOfTransactionId', 'refundOfTransactionId',
+          'reversedByTransactionId', 'refundedByTransactionId',
+          'competenceDate', 'dueDate', 'paymentDate',
+          'createdBy', 'createdAt', 'updatedAt'
+        ])
+        && request.resource.data.keys().hasAll([
+          'groupId', 'type', 'description', 'normalizedDescription',
+          'amountMinor', 'accountId', 'categoryId', 'notes',
+          'status',
+          'operationKind', 'confirmedAt', 'confirmedBy',
+          'canceledAt', 'canceledBy', 'cancellationReason',
+          'reversalOfTransactionId', 'refundOfTransactionId',
+          'reversedByTransactionId', 'refundedByTransactionId',
+          'competenceDate', 'dueDate', 'paymentDate',
+          'createdBy', 'createdAt', 'updatedAt'
+        ])
+        && request.resource.data.groupId == groupId
+        && request.resource.data.type in ['income', 'expense']
+        && request.resource.data.status in ['planned', 'pending', 'confirmed', 'canceled']
+        && request.resource.data.operationKind in ['normal', 'reversal', 'refund']
+        && (request.resource.data.confirmedAt == null || request.resource.data.confirmedAt is timestamp)
+        && (request.resource.data.confirmedBy == null || request.resource.data.confirmedBy is string)
+        && (request.resource.data.canceledAt == null || request.resource.data.canceledAt is timestamp)
+        && (request.resource.data.canceledBy == null || request.resource.data.canceledBy is string)
+        && (request.resource.data.cancellationReason == null || (request.resource.data.cancellationReason is string && request.resource.data.cancellationReason.size() >= 2 && request.resource.data.cancellationReason.size() <= 500))
+        && (request.resource.data.reversalOfTransactionId == null || request.resource.data.reversalOfTransactionId is string)
+        && (request.resource.data.refundOfTransactionId == null || request.resource.data.refundOfTransactionId is string)
+        && (request.resource.data.reversedByTransactionId == null || request.resource.data.reversedByTransactionId is string)
+        && (request.resource.data.refundedByTransactionId == null || request.resource.data.refundedByTransactionId is string)
+        && request.resource.data.description is string
+        && request.resource.data.description.size() >= 2
+        && request.resource.data.description.size() <= 120
+        && request.resource.data.normalizedDescription is string
+        && request.resource.data.normalizedDescription.size() >= 2
+        && request.resource.data.normalizedDescription.size() <= 120
+        && request.resource.data.amountMinor is int
+        && request.resource.data.amountMinor > 0
+        && request.resource.data.amountMinor <= 9000000000000
+        && request.resource.data.accountId is string
+        && request.resource.data.accountId.size() > 0
+        && request.resource.data.categoryId is string
+        && request.resource.data.categoryId.size() > 0
+        && (request.resource.data.notes == null
+          || (request.resource.data.notes is string
+            && request.resource.data.notes.size() <= 500))
+        && request.resource.data.competenceDate is string
+        && request.resource.data.competenceDate.matches('^[0-9]{4}-(0[1-9]|1[0-2])-([0-2][0-9]|3[0-1])$')
+        && request.resource.data.dueDate is string
+        && request.resource.data.dueDate.matches('^[0-9]{4}-(0[1-9]|1[0-2])-([0-2][0-9]|3[0-1])$')
+        && request.resource.data.paymentDate is string
+        && request.resource.data.paymentDate.matches('^[0-9]{4}-(0[1-9]|1[0-2])-([0-2][0-9]|3[0-1])$')
+        && request.resource.data.createdBy is string
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.updatedAt is timestamp;
+    }
+
+    function isNormalTransactionCreate() {
+      return request.resource.data.operationKind == 'normal'
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time
+        && request.resource.data.status in ['planned', 'pending', 'confirmed']
+        && request.resource.data.confirmedAt == (request.resource.data.status == 'confirmed' ? request.time : null)
+        && request.resource.data.confirmedBy == (request.resource.data.status == 'confirmed' ? request.auth.uid : null)
+        && request.resource.data.canceledAt == null && request.resource.data.canceledBy == null
+        && request.resource.data.cancellationReason == null
+        && request.resource.data.reversalOfTransactionId == null
+        && request.resource.data.refundOfTransactionId == null
+        && request.resource.data.reversedByTransactionId == null
+        && request.resource.data.refundedByTransactionId == null;
+    }
+
+    function isOppositeTransactionCreate(groupId, transactionId) {
+      let originalId = request.resource.data.operationKind == 'reversal'
+        ? request.resource.data.reversalOfTransactionId
+        : request.resource.data.refundOfTransactionId;
+      let original = get(transactionPath(groupId, originalId));
+      return request.resource.data.operationKind in ['reversal', 'refund']
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time
+        && originalId is string && original.data.groupId == groupId
+        && original.data.status == 'confirmed'
+        && (!original.data.keys().hasAny(['operationKind']) || original.data.operationKind == 'normal')
+        && request.resource.data.status == 'confirmed'
+        && request.resource.data.type != original.data.type
+        && request.resource.data.amountMinor == original.data.amountMinor
+        && request.resource.data.accountId == original.data.accountId
+        && request.resource.data.confirmedAt == request.time
+        && request.resource.data.confirmedBy == request.auth.uid
+        && request.resource.data.canceledAt == null && request.resource.data.canceledBy == null
+        && request.resource.data.cancellationReason == null
+        && request.resource.data.reversedByTransactionId == null
+        && request.resource.data.refundedByTransactionId == null
+        && getAfter(transactionPath(groupId, originalId)).data[request.resource.data.operationKind == 'reversal' ? 'reversedByTransactionId' : 'refundedByTransactionId'] == transactionId;
+    }
+
+    function isValidTransactionUpdate(groupId, transactionId) {
+      let affected = request.resource.data.diff(resource.data).affectedKeys();
+      let normal = (!resource.data.keys().hasAny(['operationKind']) || resource.data.operationKind == 'normal');
+      let edit = resource.data.status in ['planned', 'pending']
+        && request.resource.data.status == resource.data.status
+        && affected.hasOnly(['type', 'description', 'normalizedDescription', 'amountMinor', 'accountId', 'categoryId', 'notes', 'competenceDate', 'dueDate', 'paymentDate', 'updatedAt']);
+      let confirm = resource.data.status in ['planned', 'pending']
+        && request.resource.data.status == 'confirmed'
+        && request.resource.data.confirmedAt == request.time
+        && request.resource.data.confirmedBy == request.auth.uid
+        && affected.hasOnly(['status', 'confirmedAt', 'confirmedBy', 'updatedAt']);
+      let cancel = resource.data.status in ['planned', 'pending', 'confirmed']
+        && request.resource.data.status == 'canceled'
+        && request.resource.data.canceledAt == request.time
+        && request.resource.data.canceledBy == request.auth.uid
+        && request.resource.data.cancellationReason is string
+        && affected.hasOnly(['status', 'canceledAt', 'canceledBy', 'cancellationReason', 'updatedAt']);
+      let marker = resource.data.status == 'confirmed'
+        && affected.hasOnly(['reversedByTransactionId', 'refundedByTransactionId', 'updatedAt'])
+        && ((resource.data.reversedByTransactionId == null
+            && request.resource.data.reversedByTransactionId is string
+            && request.resource.data.refundedByTransactionId == resource.data.refundedByTransactionId
+            && getAfter(transactionPath(groupId, request.resource.data.reversedByTransactionId)).data.operationKind == 'reversal'
+            && getAfter(transactionPath(groupId, request.resource.data.reversedByTransactionId)).data.reversalOfTransactionId == transactionId)
+          || (resource.data.refundedByTransactionId == null
+            && request.resource.data.refundedByTransactionId is string
+            && request.resource.data.reversedByTransactionId == resource.data.reversedByTransactionId
+            && getAfter(transactionPath(groupId, request.resource.data.refundedByTransactionId)).data.operationKind == 'refund'
+            && getAfter(transactionPath(groupId, request.resource.data.refundedByTransactionId)).data.refundOfTransactionId == transactionId));
+      return normal && hasValidTransactionShape(groupId)
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.createdBy == resource.data.createdBy
+        && request.resource.data.updatedAt == request.time
+        && (!edit || hasValidTransactionReferences(groupId))
+        && (edit || confirm || cancel || marker);
+    }
+
+    function hasValidTransactionReferences(groupId) {
+      let account = get(accountPath(groupId, request.resource.data.accountId));
+      let category = get(categoryPath(groupId, request.resource.data.categoryId));
+      return account.data.groupId == groupId
+        && account.data.status == 'active'
+        && account.data.isArchived == false
+        && category.data.groupId == groupId
+        && category.data.status == 'active'
+        && category.data.type == request.resource.data.type;
+    }
+
+    match /users/{userId} {
+      allow read: if isSelf(userId);
+
+      allow create: if isSelf(userId)
+        && hasValidUserProfileShape()
+        && hasValidActiveGroup()
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time;
+
+      allow update: if isSelf(userId)
+        && hasValidUserProfileShape()
+        && hasValidActiveGroupUpdate()
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.updatedAt == request.time;
+
+      allow delete: if false;
+    }
+
+    match /financialGroups/{groupId} {
+      // A transação de bootstrap precisa ler a ausência do grupo determinístico.
+      allow get: if isActiveMember(groupId)
+        || (isSelf(groupId) && !exists(groupPath(groupId)));
+      allow list: if false;
+
+      allow create: if isAuthenticated()
+        && groupId == request.auth.uid
+        && hasValidGroupShape(groupId)
+        && existsAfter(membershipPath(groupId, request.auth.uid))
+        && isActiveOwnerMembership(
+          getAfter(membershipPath(groupId, request.auth.uid))
+        );
+
+      allow update, delete: if false;
+
+      match /members/{userId} {
+        // A mesma transação precisa ler a ausência do membership determinístico.
+        allow get: if isSelf(userId)
+          && (
+            isActiveMember(groupId)
+            || (
+              groupId == request.auth.uid
+              && !exists(membershipPath(groupId, userId))
+            )
+          );
+        allow list: if false;
+
+        allow create: if hasValidOwnerMembershipShape(groupId, userId)
+          && existsAfter(groupPath(groupId))
+          && getAfter(groupPath(groupId)).data.ownerId == request.auth.uid
+          && getAfter(groupPath(groupId)).data.type == 'personal'
+          && getAfter(groupPath(groupId)).data.status == 'active';
+
+        allow update, delete: if false;
+      }
+
+      match /categories/{categoryId} {
+        allow read: if isActiveMember(groupId);
+
+        allow create: if isActiveMember(groupId)
+          && categoryId.size() > 0
+          && isValidCategoryCreate(groupId);
+
+        allow update: if isActiveMember(groupId)
+          && hasValidCategoryUpdate(groupId);
+
+        allow delete: if isActiveMember(groupId)
+          && canDeleteCategory();
+      }
+
+      match /accounts/{accountId} {
+        allow read: if isActiveMember(groupId);
+        allow create: if isActiveMember(groupId)
+          && accountId.size() > 0
+          && isValidAccountCreate(groupId);
+        allow update: if isActiveMember(groupId)
+          && isValidAccountUpdate(groupId);
+        allow delete: if false;
+      }
+
+      match /transactions/{transactionId} {
+        allow read: if isActiveMember(groupId);
+        allow create: if isActiveMember(groupId)
+          && transactionId.size() > 0
+          && hasValidTransactionShape(groupId)
+          && hasValidTransactionReferences(groupId)
+          && (isNormalTransactionCreate() || isOppositeTransactionCreate(groupId, transactionId));
+        allow update: if isActiveMember(groupId) && isValidTransactionUpdate(groupId, transactionId);
+        allow delete: if false;
+      }
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
