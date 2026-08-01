@@ -51,6 +51,9 @@ const input = {
   accountId: account.id,
   categoryId: category.id,
   notes: '  Julho  ',
+  competenceDate: '2026-07-31',
+  dueDate: '2026-08-05',
+  paymentDate: '2026-08-05',
 }
 describe('TransactionService', () => {
   const repository = { create: vi.fn(), listRecentByGroup: vi.fn() }
@@ -87,8 +90,20 @@ describe('TransactionService', () => {
       accountId: 'account-1',
       categoryId: 'category-1',
       notes: 'Julho',
+      competenceDate: '2026-07-31',
+      dueDate: '2026-08-05',
+      paymentDate: '2026-08-05',
     })
     expect(accounts.listByGroup).toHaveBeenCalledTimes(1)
+  })
+  it('rejeita data civil inexistente sem criar no repository', async () => {
+    await expect(
+      service.createTransaction(
+        { groupId: 'group-1', userId: 'user-1' },
+        { ...input, paymentDate: '2026-02-30' },
+      ),
+    ).rejects.toMatchObject({ code: 'invalid-input' })
+    expect(repository.create).not.toHaveBeenCalled()
   })
   it('cria despesa com categoria compatível', async () => {
     vi.mocked(categories.getById).mockResolvedValue({

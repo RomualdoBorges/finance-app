@@ -18,6 +18,9 @@ export type Transaction = {
   readonly accountId: string
   readonly categoryId: string
   readonly notes: string | null
+  readonly competenceDate: string | null
+  readonly dueDate: string | null
+  readonly paymentDate: string | null
   readonly createdBy: string
   readonly createdAt: Date
   readonly updatedAt: Date
@@ -26,9 +29,22 @@ export type Transaction = {
 export type CreateTransactionInput = Pick<
   Transaction,
   'type' | 'description' | 'amountMinor' | 'accountId' | 'categoryId' | 'notes'
->
+> & {
+  readonly competenceDate: string
+  readonly dueDate: string
+  readonly paymentDate: string
+}
 
 export type PersistTransactionInput = Omit<
   Transaction,
-  'id' | 'createdAt' | 'updatedAt'
->
+  | 'id'
+  | 'createdAt'
+  | 'updatedAt'
+  | 'competenceDate'
+  | 'dueDate'
+  | 'paymentDate'
+> & {
+  readonly competenceDate: string
+  readonly dueDate: string
+  readonly paymentDate: string
+}

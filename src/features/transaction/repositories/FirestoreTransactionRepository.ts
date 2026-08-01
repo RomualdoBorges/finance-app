@@ -22,7 +22,10 @@ import {
   TransactionError,
   type TransactionErrorCode,
 } from '../domain/TransactionError'
-import { createTransactionSchema } from '../domain/transactionSchemas'
+import {
+  civilDateSchema,
+  createTransactionSchema,
+} from '../domain/transactionSchemas'
 import type { TransactionRepository } from './TransactionRepository'
 
 export const RECENT_TRANSACTION_LIMIT = 50
@@ -94,14 +97,22 @@ export function mapTransactionSnapshot(
   const data = snapshot.data as Readonly<Record<string, unknown>>
   const createdAt = date(data['createdAt'])
   const updatedAt = date(data['updatedAt'])
-  const parsed = createTransactionSchema.safeParse({
-    type: data['type'],
-    description: data['description'],
-    amountMinor: data['amountMinor'],
-    accountId: data['accountId'],
-    categoryId: data['categoryId'],
-    notes: data['notes'],
-  })
+  const parsed = createTransactionSchema
+    .omit({ competenceDate: true, dueDate: true, paymentDate: true })
+    .safeParse({
+      type: data['type'],
+      description: data['description'],
+      amountMinor: data['amountMinor'],
+      accountId: data['accountId'],
+      categoryId: data['categoryId'],
+      notes: data['notes'],
+    })
+  const legacyDate = (field: string): string | null => {
+    if (!(field in data)) return null
+    const result = civilDateSchema.safeParse(data[field])
+    if (!result.success) throw new TransactionError('invalid-data')
+    return result.data
+  }
   if (
     snapshot.id.length === 0 ||
     data['groupId'] !== groupId ||
@@ -119,6 +130,9 @@ export function mapTransactionSnapshot(
     type: data['type'] as TransactionType,
     normalizedDescription: data['normalizedDescription'],
     createdBy: data['createdBy'],
+    competenceDate: legacyDate('competenceDate'),
+    dueDate: legacyDate('dueDate'),
+    paymentDate: legacyDate('paymentDate'),
     createdAt,
     updatedAt,
   }

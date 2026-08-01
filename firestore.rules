@@ -384,11 +384,13 @@ service cloud.firestore {
       return request.resource.data.keys().hasOnly([
           'groupId', 'type', 'description', 'normalizedDescription',
           'amountMinor', 'accountId', 'categoryId', 'notes',
+          'competenceDate', 'dueDate', 'paymentDate',
           'createdBy', 'createdAt', 'updatedAt'
         ])
         && request.resource.data.keys().hasAll([
           'groupId', 'type', 'description', 'normalizedDescription',
           'amountMinor', 'accountId', 'categoryId', 'notes',
+          'competenceDate', 'dueDate', 'paymentDate',
           'createdBy', 'createdAt', 'updatedAt'
         ])
         && request.resource.data.groupId == groupId
@@ -409,6 +411,12 @@ service cloud.firestore {
         && (request.resource.data.notes == null
           || (request.resource.data.notes is string
             && request.resource.data.notes.size() <= 500))
+        && request.resource.data.competenceDate is string
+        && request.resource.data.competenceDate.matches('^[0-9]{4}-(0[1-9]|1[0-2])-([0-2][0-9]|3[0-1])$')
+        && request.resource.data.dueDate is string
+        && request.resource.data.dueDate.matches('^[0-9]{4}-(0[1-9]|1[0-2])-([0-2][0-9]|3[0-1])$')
+        && request.resource.data.paymentDate is string
+        && request.resource.data.paymentDate.matches('^[0-9]{4}-(0[1-9]|1[0-2])-([0-2][0-9]|3[0-1])$')
         && request.resource.data.createdBy == request.auth.uid
         && request.resource.data.createdAt == request.time
         && request.resource.data.updatedAt == request.time;

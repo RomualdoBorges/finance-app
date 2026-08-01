@@ -5,6 +5,7 @@ import {
   LoadingState,
 } from '../../../components/ui/AppState'
 import { formatMinorToCurrency } from '../../../shared/money/money'
+import { formatCivilDateBR } from '../../../lib/date'
 import { useAccounts } from '../../account/hooks/useAccounts'
 import { useCategories } from '../../category/hooks/useCategories'
 import { TransactionFormDialog } from '../components/TransactionFormDialog'
@@ -100,6 +101,12 @@ export function TransactionsPage() {
                   {accountNames.get(item.accountId) ?? 'Conta indisponível'} ·{' '}
                   {categoryNames.get(item.categoryId) ??
                     'Categoria indisponível'}
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Competência:{' '}
+                  {item.competenceDate === null
+                    ? 'não informada'
+                    : formatCivilDateBR(item.competenceDate)}
                 </p>
                 {item.notes ? (
                   <p className="mt-2 text-sm text-muted-foreground">

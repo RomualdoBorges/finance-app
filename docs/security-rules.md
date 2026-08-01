@@ -164,6 +164,10 @@ Cobertura mínima:
 - cenários positivos autorizados continuam funcionando.
 
 Os testes usam Authentication, Firestore, Functions e Storage Emulators e não acessam dados de produção.
-## Lançamentos básicos
+## Lançamentos básicos e datas financeiras
 
-Membros ativos podem ler `financialGroups/{groupId}/transactions`. A criação exige o conjunto exato de campos do contrato, `createdBy` autenticado, timestamps do servidor, tipo `income`/`expense`, valor inteiro positivo dentro do limite e conta/categoria ativas do mesmo grupo; a categoria deve ter tipo compatível. Updates e deletes são bloqueados. Campos futuros, inclusive datas, status, saldos e vínculos de transferência/recorrência, são rejeitados por não integrarem a lista permitida.
+Membros ativos podem ler `financialGroups/{groupId}/transactions`. A criação exige o conjunto exato de campos do contrato, `createdBy` autenticado, timestamps do servidor, tipo `income`/`expense`, valor inteiro positivo dentro do limite e conta/categoria ativas do mesmo grupo; a categoria deve ter tipo compatível.
+
+`competenceDate`, `dueDate` e `paymentDate` são obrigatórias em novas criações e aceitam somente strings com estrutura `YYYY-MM-DD`; `Timestamp`, `null` e outros formatos são bloqueados. A existência real do dia no calendário é validada no domínio, pois as Rules fazem somente a validação estrutural adequada a esse ambiente. Documentos legados sem as propriedades continuam legíveis, sem migração. As datas não autorizam transições de estado nem efeitos financeiros.
+
+Updates e deletes permanecem bloqueados. Campos futuros, inclusive status, saldos e vínculos de transferência/recorrência, continuam rejeitados por não integrarem a lista permitida.

@@ -19,6 +19,9 @@ const input = {
   accountId: 'account-1',
   categoryId: 'category-1',
   notes: null,
+  competenceDate: '2026-07-31',
+  dueDate: '2026-08-05',
+  paymentDate: '2026-08-05',
   createdBy: 'user-1',
 }
 const snapshot = {
@@ -69,6 +72,43 @@ describe('FirestoreTransactionRepository', () => {
         ...snapshot,
         data: { ...snapshot.data, status: 'confirmed', amountMinor: 0 },
       },
+    ])
+    await expect(repository.listRecentByGroup('group-1')).rejects.toMatchObject(
+      { code: 'invalid-data' },
+    )
+  })
+  it('mapeia datas ausentes de documento legado como null', async () => {
+    const { ops, repository } = setup()
+    const { competenceDate, dueDate, paymentDate, ...legacyInput } = input
+    void competenceDate
+    void dueDate
+    void paymentDate
+    vi.mocked(ops.list).mockResolvedValue([
+      {
+        ...snapshot,
+        data: {
+          ...legacyInput,
+          createdAt: timestamp(),
+          updatedAt: timestamp(),
+        },
+      },
+    ])
+    await expect(repository.listRecentByGroup('group-1')).resolves.toEqual([
+      expect.objectContaining({
+        competenceDate: null,
+        dueDate: null,
+        paymentDate: null,
+      }),
+    ])
+  })
+  it.each([
+    ['competenceDate', '2026-02-30'],
+    ['dueDate', null],
+    ['paymentDate', timestamp()],
+  ])('rejeita %s presente e inválida', async (field, value) => {
+    const { ops, repository } = setup()
+    vi.mocked(ops.list).mockResolvedValue([
+      { ...snapshot, data: { ...snapshot.data, [field]: value } },
     ])
     await expect(repository.listRecentByGroup('group-1')).rejects.toMatchObject(
       { code: 'invalid-data' },

@@ -15,6 +15,7 @@ import {
 import { TransactionError } from '../domain/TransactionError'
 import { createTransactionSchema } from '../domain/transactionSchemas'
 import { parseCurrencyToMinor } from '../../../shared/money/money'
+import { getTodayCivilDate } from '../../../lib/date'
 
 const formSchema = createTransactionSchema.omit({ amountMinor: true }).extend({
   amount: z.string().refine((value) => {
@@ -36,6 +37,7 @@ export function TransactionFormDialog({
   readonly onSubmit: (input: CreateTransactionInput) => Promise<unknown>
 }) {
   const [open, setOpen] = useState(false)
+  const today = getTodayCivilDate()
   const {
     register,
     handleSubmit,
@@ -54,6 +56,9 @@ export function TransactionFormDialog({
       accountId: '',
       categoryId: '',
       notes: '',
+      competenceDate: today,
+      dueDate: today,
+      paymentDate: today,
     },
   })
   const type = useWatch({ control, name: 'type' }) ?? 'expense'
@@ -69,6 +74,9 @@ export function TransactionFormDialog({
         accountId: values.accountId,
         categoryId: values.categoryId,
         notes: values.notes ?? null,
+        competenceDate: values.competenceDate,
+        dueDate: values.dueDate,
+        paymentDate: values.paymentDate,
       })
       reset()
       setOpen(false)
@@ -164,6 +172,27 @@ export function TransactionFormDialog({
                     </option>
                   ))}
               </select>
+            </Field>
+            <Field label="Competência" error={errors.competenceDate?.message}>
+              <input
+                className="mt-1 min-h-10 w-full rounded-md border border-border bg-background px-3"
+                type="date"
+                {...register('competenceDate')}
+              />
+            </Field>
+            <Field label="Vencimento" error={errors.dueDate?.message}>
+              <input
+                className="mt-1 min-h-10 w-full rounded-md border border-border bg-background px-3"
+                type="date"
+                {...register('dueDate')}
+              />
+            </Field>
+            <Field label="Pagamento" error={errors.paymentDate?.message}>
+              <input
+                className="mt-1 min-h-10 w-full rounded-md border border-border bg-background px-3"
+                type="date"
+                {...register('paymentDate')}
+              />
             </Field>
             <Field label="Categoria" error={errors.categoryId?.message}>
               <select

@@ -114,7 +114,9 @@ domínio, segurança e limitação de unicidade estão em `docs/categories.md`.
 
 ### `transactions` — MVP; tipos adicionais nas fases seguintes
 
-Campos: `type`, `description`, `amount`, `competenceDate`, `paymentDate`, `dueDate`, `status`, `accountId`, `cardId`, `invoiceId`, `categoryId`, `subcategoryId`, `ownerId`, `createdBy`, `visibility`, `paymentMethod`, `merchant`, `tags`, `notes`, `recurrenceId`, `installmentPlanId`, `installmentNumber`, `installmentTotal`, `transferId`, `attachmentIds`, `createdAt`, `updatedAt`.
+Contrato implementado nesta etapa: `groupId`, `type`, `description`, `normalizedDescription`, `amountMinor`, `accountId`, `categoryId`, `notes`, `competenceDate`, `dueDate`, `paymentDate`, `createdBy`, `createdAt` e `updatedAt`. As três datas financeiras são strings civis `YYYY-MM-DD`, sem horário ou timezone: competência representa a data econômica, vencimento a previsão e pagamento a ocorrência. Elas são obrigatórias em novos documentos e apenas informativas; não há status nem efeitos financeiros nesta etapa. Documentos legados sem esses campos permanecem legíveis e são mapeados com datas `null`, sem migração ou default inventado.
+
+Campos adicionais previstos para etapas futuras: `status`, `cardId`, `invoiceId`, `subcategoryId`, `ownerId`, `visibility`, `paymentMethod`, `merchant`, `tags`, `recurrenceId`, `installmentPlanId`, `installmentNumber`, `installmentTotal`, `transferId` e `attachmentIds`.
 
 Tipos: `income`, `expense`, `transfer_in`, `transfer_out`, `balance_adjustment`, `card_purchase`, `invoice_payment`, `refund`, `investment_contribution`, `investment_withdrawal`. Status: `planned`, `pending`, `confirmed`, `overdue`, `cancelled`, `refunded`, `partially_refunded`. Visibilidade: `private`, `shared`.
 

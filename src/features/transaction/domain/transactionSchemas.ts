@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { MAX_MONEY_MINOR } from '../../../shared/money/money'
+import { isValidCivilDate } from '../../../lib/date'
 import { TRANSACTION_TYPES } from './Transaction'
 
 const identifier = z
@@ -8,6 +9,11 @@ const identifier = z
   .min(1)
   .max(128)
   .refine((v) => !v.includes('/'))
+
+export const civilDateSchema = z
+  .string({ message: 'Informe uma data.' })
+  .regex(/^\d{4}-\d{2}-\d{2}$/, 'Use o formato AAAA-MM-DD.')
+  .refine(isValidCivilDate, 'Informe uma data válida.')
 
 export const transactionIdentitySchema = z
   .object({
@@ -39,5 +45,8 @@ export const createTransactionSchema = z
       .max(500, 'Use no máximo 500 caracteres.')
       .nullish()
       .transform((value) => value || null),
+    competenceDate: civilDateSchema,
+    dueDate: civilDateSchema,
+    paymentDate: civilDateSchema,
   })
   .strict()

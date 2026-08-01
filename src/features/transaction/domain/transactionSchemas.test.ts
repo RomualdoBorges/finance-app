@@ -11,6 +11,9 @@ const valid = {
   accountId: 'account-1',
   categoryId: 'category-1',
   notes: null,
+  competenceDate: '2026-07-31',
+  dueDate: '2026-08-05',
+  paymentDate: '2026-08-05',
 }
 describe('transaction domain', () => {
   it('mantém enum fechado e labels em português', () => {
@@ -58,5 +61,20 @@ describe('transaction domain', () => {
         createdBy: 'user-1',
       }).success,
     ).toBe(false)
+  })
+  it.each(['2026-02-30', '2025-02-29', '31/07/2026', '', null])(
+    'rejeita data de criação inválida %s',
+    (competenceDate) => {
+      expect(
+        createTransactionSchema.safeParse({ ...valid, competenceDate }).success,
+      ).toBe(false)
+    },
+  )
+  it('exige as três datas em novos lançamentos', () => {
+    const { paymentDate: _paymentDate, ...withoutPaymentDate } = valid
+    void _paymentDate
+    expect(createTransactionSchema.safeParse(withoutPaymentDate).success).toBe(
+      false,
+    )
   })
 })

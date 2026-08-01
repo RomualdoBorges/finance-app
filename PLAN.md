@@ -67,7 +67,7 @@ Nenhum item está concluído por existir no template. Checkboxes só são marcad
 ### Milestone 3 — Lançamentos e extrato
 
 - [x] Receitas e despesas
-- [ ] Datas de competência, pagamento e vencimento
+- [x] Datas de competência, pagamento e vencimento
 - [ ] Estados planejado, pendente, confirmado, vencido e cancelado
 - [ ] Edição, confirmação, cancelamento, estorno e reembolso aplicáveis
 - [ ] Atualização consistente de saldos e agregados

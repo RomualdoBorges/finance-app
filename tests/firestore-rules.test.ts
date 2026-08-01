@@ -150,6 +150,9 @@ function transactionData(
     accountId: 'account-1',
     categoryId: 'category-1',
     notes: null,
+    competenceDate: '2026-07-31',
+    dueDate: '2026-08-05',
+    paymentDate: '2026-08-05',
     createdBy: userId,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
@@ -990,6 +993,10 @@ describe('Firestore Rules de lançamentos', () => {
     { groupId: 'group-b' },
     { createdBy: 'user-2' },
     { status: 'confirmed' },
+    { competenceDate: '31/07/2026' },
+    { dueDate: '2026-13-01' },
+    { paymentDate: Timestamp.fromMillis(0) },
+    { competenceDate: null },
   ])('bloqueia payload inválido %#', async (override) => {
     await seedReferences()
     const owner = environment.authenticatedContext('user-1').firestore()
@@ -999,6 +1006,35 @@ describe('Firestore Rules de lançamentos', () => {
         transactionData('group-a', 'user-1', override),
       ),
     )
+  })
+
+  it('bloqueia ausência de qualquer data em nova criação', async () => {
+    await seedReferences()
+    const owner = environment.authenticatedContext('user-1').firestore()
+    for (const field of ['competenceDate', 'dueDate', 'paymentDate']) {
+      const data = transactionData('group-a', 'user-1') as Record<string, unknown>
+      delete data[field]
+      await assertFails(
+        setDoc(transactionRef(owner, 'group-a', crypto.randomUUID()), data),
+      )
+    }
+  })
+
+  it('mantém documento legado sem datas legível', async () => {
+    await seedReferences()
+    const owner = environment.authenticatedContext('user-1').firestore()
+    const reference = transactionRef(owner, 'group-a', 'legacy')
+    await environment.withSecurityRulesDisabled(async (context) => {
+      const data = transactionData('group-a', 'user-1') as Record<string, unknown>
+      delete data.competenceDate
+      delete data.dueDate
+      delete data.paymentDate
+      await setDoc(
+        transactionRef(context.firestore(), 'group-a', 'legacy'),
+        { ...data, createdAt: Timestamp.fromMillis(0), updatedAt: Timestamp.fromMillis(0) },
+      )
+    })
+    await assertSucceeds(getDoc(reference))
   })
 
   it('bloqueia referências ausentes, arquivadas, incompatíveis e outro usuário', async () => {
